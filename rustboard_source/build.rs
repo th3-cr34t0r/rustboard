@@ -27,18 +27,32 @@ fn main() {
     let user_config = include_str!("user_config.toml");
     let user_config: Config = toml::from_str(user_config).unwrap();
 
+    // KeyDebounce
+    let debounce_config = user_config
+        .debounce
+        .unwrap_or(config::DebounceConfig { key_debounce: 10 });
+
+    // evaluate cols depending on the split configuration
+    let keymap_cols = if user_config.ble.split {
+        user_config.matrix.col_pins.len() * 2
+    } else {
+        user_config.matrix.col_pins.len()
+    };
+
     let const_declarations = [
         const_declaration!(pub(crate) NAME = user_config.ble.name),
         const_declaration!(pub(crate) SPLIT = user_config.ble.split),
-        const_declaration!(pub(crate) ROWS = user_config.matrix.rows),
-        const_declaration!(pub(crate) COLS = user_config.matrix.cols),
-        const_declaration!(pub(crate) KEY_DEBOUNCE = user_config.debounce.key_debounce),
+        const_declaration!(pub(crate) ROW_PINS = user_config.matrix.row_pins),
+        const_declaration!(pub(crate) COL_PINS = user_config.matrix.col_pins),
+        const_declaration!(pub(crate) ROWS = user_config.matrix.row_pins.len()),
+        const_declaration!(pub(crate) COLS = user_config.matrix.col_pins.len()),
+        const_declaration!(pub(crate) KEYMAP_COLS = keymap_cols),
+        const_declaration!(pub(crate) KEY_DEBOUNCE = debounce_config.key_debounce),
         const_declaration!(pub(crate) LAYERS = user_config.keymap.layers),
     ]
     .join("\n");
 
     // store it in the destination file
-
     fs::write(&dest_path, const_declarations).unwrap();
 
     // Put `memory.x` in our output directory and ensure it's

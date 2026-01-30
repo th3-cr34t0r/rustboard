@@ -8,7 +8,7 @@ use embassy_nrf::{
     },
 };
 
-use crate::matrix::Matrix;
+use crate::{Pins, ROW_PINS, ROWS, matrix::Matrix, output_pins_setup};
 
 pub struct BlePeri {
     pub ppi_ch17: Peri<'static, PPI_CH17>,
@@ -76,6 +76,8 @@ impl<'a> AppPeri<'a> {
             p_04: p.P0_04,
             saadc: p.SAADC,
         };
+
+        // let mut rows: [Output<'_>; ROWS];
 
         // init rows
         let rows = [

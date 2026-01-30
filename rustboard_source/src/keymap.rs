@@ -1,6 +1,6 @@
 use crate::keycodes::KC;
 
-use crate::{COLS, LAYERS, ROWS};
+use crate::{KEYMAP_COLS, LAYERS, ROWS};
 
 //*****************************************************************************************
 // LAYER 0:
@@ -21,7 +21,7 @@ use crate::{COLS, LAYERS, ROWS};
 //
 //*****************************************************************************************
 #[rustfmt::skip]
-pub fn provide_keymap() -> [[[KC; COLS * 2]; ROWS]; LAYERS] {
+pub fn provide_keymap() -> [[[KC; KEYMAP_COLS]; ROWS]; LAYERS] {
 
 [
     [

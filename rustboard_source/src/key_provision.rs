@@ -10,7 +10,7 @@ use crate::{
     KEY_REPORT, MATRIX_KEYS_SPLIT,
     keycodes::KeyType,
     keymap::provide_keymap,
-    {COLS, LAYERS, ROWS},
+    {KEYMAP_COLS, LAYERS, ROWS},
 };
 
 #[cfg(feature = "central")]
@@ -29,7 +29,7 @@ pub struct KeyProvision {
     #[cfg(feature = "peripheral")]
     layer: u8,
     #[cfg(feature = "peripheral")]
-    keymap: [[[KC; COLS * 2]; ROWS]; LAYERS],
+    keymap: [[[KC; KEYMAP_COLS]; ROWS]; LAYERS],
     #[cfg(feature = "peripheral")]
     keyreport_local: KeyboardReport,
     #[cfg(feature = "central")]
