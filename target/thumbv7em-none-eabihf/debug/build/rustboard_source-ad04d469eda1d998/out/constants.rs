@@ -1,0 +1,9 @@
+pub(crate) const NAME: &'static str = "Rustboard";
+pub(crate) const SPLIT: bool = true;
+pub(crate) const ROW_PINS: &'static [Pins] = &[Pins::P0_17,Pins::P0_20,Pins::P0_22,Pins::P0_22];
+pub(crate) const COL_PINS: &'static [Pins] = &[Pins::P0_31,Pins::P0_29,Pins::P0_02,Pins::P1_15,Pins::P1_15];
+pub(crate) const ROWS: usize = 4usize;
+pub(crate) const COLS: usize = 5usize;
+pub(crate) const KEYMAP_COLS: usize = 10usize;
+pub(crate) const KEY_DEBOUNCE: u64 = 10u64;
+pub(crate) const LAYERS: usize = 2usize;

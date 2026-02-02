@@ -1,0 +1,1 @@
+HighPrioInterruptHandler: Handler<embassy_nrf::interrupt::typelevel::RTC0>

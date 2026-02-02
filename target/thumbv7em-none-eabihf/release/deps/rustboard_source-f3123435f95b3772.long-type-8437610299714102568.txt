@@ -1,0 +1,1 @@
+&mut Stack<'static, SoftdeviceController<'static>, trouble_host::packet_pool::StaticPacketPool<CriticalSectionRawMutex, 251, 16>>

@@ -1,0 +1,1 @@
+Runner<'static, SoftdeviceController<'_>, trouble_host::packet_pool::StaticPacketPool<CriticalSectionRawMutex, 251, 16>>

@@ -1,0 +1,10 @@
+/home/archer/Documents/projects/rustboard/target/release/deps/embassy_executor_macros-b889324712855af5.d: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/mod.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/main.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/task.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/util.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/../README.md
+
+/home/archer/Documents/projects/rustboard/target/release/deps/libembassy_executor_macros-b889324712855af5.so: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/mod.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/main.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/task.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/util.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/../README.md
+
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/lib.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/mod.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/main.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/macros/task.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/util.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor-macros/src/../README.md:

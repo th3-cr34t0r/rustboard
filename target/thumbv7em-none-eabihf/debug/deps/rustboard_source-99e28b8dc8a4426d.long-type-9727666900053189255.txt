@@ -1,0 +1,1 @@
+trouble_host::Stack<'_, nrf_sdc::SoftdeviceController<'_>, trouble_host::packet_pool::StaticPacketPool<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, 251, 16>>

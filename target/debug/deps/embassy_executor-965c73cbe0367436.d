@@ -1,0 +1,17 @@
+/home/archer/Documents/projects/rustboard/target/debug/deps/embassy_executor-965c73cbe0367436.d: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/fmt.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/arch/cortex_m.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/mod.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/run_queue.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/state_atomics.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/util.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/waker.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/spawner.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/metadata.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/../README.md
+
+/home/archer/Documents/projects/rustboard/target/debug/deps/libembassy_executor-965c73cbe0367436.rmeta: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/fmt.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/arch/cortex_m.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/mod.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/run_queue.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/state_atomics.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/util.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/waker.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/spawner.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/metadata.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/../README.md
+
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/lib.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/fmt.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/arch/cortex_m.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/mod.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/run_queue.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/state_atomics.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/util.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/raw/waker.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/spawner.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/metadata.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-executor/src/../README.md:
+
+# env-dep:DEFMT_LOG

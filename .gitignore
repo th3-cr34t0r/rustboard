@@ -3,3 +3,4 @@ rustboard_source/nrf_rustboard_peripheral.hex
 rustboard_source/nrf_rustboard_central.hex
 rustboard_source/nrf_rustboard_peripheral.uf2
 rustboard_source/nrf_rustboard_central.uf2
+rustboard_macros/target/

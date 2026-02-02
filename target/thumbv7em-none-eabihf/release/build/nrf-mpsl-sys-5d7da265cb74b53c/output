@@ -1,0 +1,4 @@
+cargo:rustc-link-search=/home/archer/.cargo/git/checkouts/nrf-sdc-60aaf678d91c8332/36816b8/nrf-mpsl-sys/third_party/nordic/nrfxlib/mpsl/./lib/nrf52/hard-float
+cargo:rustc-link-search=/home/archer/.cargo/git/checkouts/nrf-sdc-60aaf678d91c8332/36816b8/nrf-mpsl-sys/third_party/nordic/nrfxlib/mpsl/fem/common/lib/nrf52/hard-float
+cargo:rustc-link-lib=static=mpsl
+cargo:rustc-link-lib=static=mpsl_fem_common

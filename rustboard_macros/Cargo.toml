@@ -1,6 +1,6 @@
 [package]
 name = "rustboard_macros"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 [lib]
@@ -9,3 +9,4 @@ proc-macro = true
 [dependencies]
 quote = "1.0.44"
 syn = "2.0.114"
+

@@ -1,0 +1,1 @@
+nrf_mpsl::LowPrioInterruptHandler: embassy_nrf::interrupt::typelevel::Handler<embassy_nrf::interrupt::typelevel::EGU0_SWI0>

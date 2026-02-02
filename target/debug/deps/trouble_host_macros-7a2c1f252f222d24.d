@@ -1,0 +1,10 @@
+/home/archer/Documents/projects/rustboard/target/debug/deps/trouble_host_macros-7a2c1f252f222d24.d: /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/lib.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/characteristic.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/ctxt.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/server.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/service.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/uuid.rs
+
+/home/archer/Documents/projects/rustboard/target/debug/deps/libtrouble_host_macros-7a2c1f252f222d24.so: /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/lib.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/characteristic.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/ctxt.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/server.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/service.rs /home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/uuid.rs
+
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/lib.rs:
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/characteristic.rs:
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/ctxt.rs:
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/server.rs:
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/service.rs:
+/home/archer/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trouble-host-macros-0.3.0/src/uuid.rs:

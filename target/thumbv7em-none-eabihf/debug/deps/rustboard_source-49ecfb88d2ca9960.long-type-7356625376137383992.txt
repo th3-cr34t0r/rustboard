@@ -1,0 +1,1 @@
+&mut trouble_host::central::Central<'a, nrf_sdc::SoftdeviceController<'b>, trouble_host::packet_pool::StaticPacketPool<embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, 251, 16>>

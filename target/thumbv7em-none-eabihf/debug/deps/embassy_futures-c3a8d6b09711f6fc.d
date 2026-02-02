@@ -1,0 +1,11 @@
+/home/archer/Documents/projects/rustboard/target/thumbv7em-none-eabihf/debug/deps/embassy_futures-c3a8d6b09711f6fc.d: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/fmt.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/block_on.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/yield_now.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/join.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/select.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/../README.md
+
+/home/archer/Documents/projects/rustboard/target/thumbv7em-none-eabihf/debug/deps/libembassy_futures-c3a8d6b09711f6fc.rmeta: /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/lib.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/fmt.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/block_on.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/yield_now.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/join.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/select.rs /home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/../README.md
+
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/lib.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/fmt.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/block_on.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/yield_now.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/join.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/select.rs:
+/home/archer/.cargo/git/checkouts/embassy-c08a80187403f815/729f96b/embassy-futures/src/../README.md:
