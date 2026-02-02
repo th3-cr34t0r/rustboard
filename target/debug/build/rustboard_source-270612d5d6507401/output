@@ -1,5 +1,0 @@
-cargo:rustc-link-search=/home/archer/Documents/projects/rustboard/target/debug/build/rustboard_source-270612d5d6507401/out
-cargo:rerun-if-changed=memory.x
-cargo:rustc-link-arg-bins=--nmagic
-cargo:rustc-link-arg-bins=-Tlink.x
-cargo:rustc-link-arg-bins=-Tdefmt.x

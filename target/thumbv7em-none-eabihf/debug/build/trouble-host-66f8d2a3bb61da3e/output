@@ -1,9 +1,0 @@
-cargo::rerun-if-changed=build.rs
-cargo::rustc-check-cfg=cfg(test)
-cargo::rerun-if-env-changed=TROUBLE_HOST_CONNECTION_EVENT_QUEUE_SIZE
-cargo::rerun-if-env-changed=TROUBLE_HOST_L2CAP_RX_QUEUE_SIZE
-cargo::rerun-if-env-changed=TROUBLE_HOST_L2CAP_TX_QUEUE_SIZE
-cargo::rerun-if-env-changed=TROUBLE_HOST_DEFAULT_PACKET_POOL_SIZE
-cargo::rerun-if-env-changed=TROUBLE_HOST_DEFAULT_PACKET_POOL_MTU
-cargo::rerun-if-env-changed=TROUBLE_HOST_GATT_CLIENT_NOTIFICATION_MAX_SUBSCRIBERS
-cargo::rerun-if-env-changed=TROUBLE_HOST_GATT_CLIENT_NOTIFICATION_QUEUE_SIZE

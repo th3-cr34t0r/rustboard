@@ -1,2 +1,0 @@
-cargo:rustc-link-search=/home/archer/.cargo/git/checkouts/nrf-pac-5434cf7d907da92b/7f45069/src/chips/nrf52840
-cargo:rerun-if-changed=build.rs

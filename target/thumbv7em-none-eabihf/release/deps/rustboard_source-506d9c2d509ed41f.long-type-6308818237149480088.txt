@@ -1,1 +1,0 @@
-Irqs: embassy_nrf::chip::interrupt::typelevel::Binding<embassy_nrf::chip::interrupt::typelevel::RADIO, HighPrioInterruptHandler>

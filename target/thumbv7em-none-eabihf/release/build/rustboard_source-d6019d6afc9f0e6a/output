@@ -1,5 +1,0 @@
-cargo:rustc-link-search=/home/archer/Documents/projects/rustboard/target/thumbv7em-none-eabihf/release/build/rustboard_source-d6019d6afc9f0e6a/out
-cargo:rerun-if-changed=memory.x
-cargo:rustc-link-arg-bins=--nmagic
-cargo:rustc-link-arg-bins=-Tlink.x
-cargo:rustc-link-arg-bins=-Tdefmt.x

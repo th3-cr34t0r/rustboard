@@ -1,1 +1,0 @@
-LowPrioInterruptHandler: Handler<embassy_nrf::interrupt::typelevel::EGU0_SWI0>

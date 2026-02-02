@@ -1,1 +1,0 @@
-nrf_mpsl::ClockInterruptHandler: embassy_nrf::interrupt::typelevel::Handler<embassy_nrf::interrupt::typelevel::CLOCK_POWER>

@@ -1,1 +1,0 @@
-ble::Irqs: embassy_nrf::chip::interrupt::typelevel::Binding<embassy_nrf::chip::interrupt::typelevel::CLOCK_POWER, nrf_mpsl::ClockInterruptHandler>

@@ -1,3 +1,0 @@
-cargo:rustc-link-search=/home/archer/Documents/projects/rustboard/target/thumbv7em-none-eabihf/release/build/defmt-fdf6d9878f0248c4/out
-cargo:rustc-check-cfg=cfg(c_variadic)
-cargo:rustc-check-cfg=cfg(no_cas)
