@@ -7,6 +7,7 @@ use embassy_nrf::{
     Peri,
     peripherals::{P0_04, SAADC},
 };
+use embassy_time::Duration;
 use embedded_storage_async::nor_flash::NorFlash;
 use nrf_sdc::Error;
 use nrf_sdc::SoftdeviceController;
@@ -15,13 +16,13 @@ use static_cell::StaticCell;
 use trouble_host::att::AttErrorCode;
 use trouble_host::gap::{GapConfig, PeripheralConfig};
 use trouble_host::gatt::{GattConnection, GattConnectionEvent, GattEvent};
-use trouble_host::prelude::PhyKind;
 use trouble_host::prelude::service::{BATTERY, HUMAN_INTERFACE_DEVICE};
 use trouble_host::prelude::{
     AdStructure, Advertisement, BR_EDR_NOT_SUPPORTED, DefaultPacketPool, LE_GENERAL_DISCOVERABLE,
     Peripheral, appearance,
 };
 use trouble_host::prelude::{AdvertisementParameters, TxPower};
+use trouble_host::prelude::{ConnectParams, PhyKind};
 use trouble_host::{Address, BleHostError, Host, Stack};
 use trouble_host::{HostResources, IoCapabilities};
 
@@ -29,18 +30,17 @@ use crate::battery::Battery;
 use crate::ble::ble_task;
 use crate::ble::get_device_address;
 use crate::ble::services::SPLIT_SERVICE;
-use crate::config::MATRIX_KEYS_BUFFER;
+use crate::config::{BLE_NAME, COLS, MATRIX_KEYS_BUFFER, SPLIT_PERIPHERAL};
 use crate::matrix::KeyPos;
 use crate::storage::{load_bonding_info, store_bonding_info};
 use crate::{BATTERY_LEVEL, MATRIX_KEYS_SPLIT};
-use crate::{COLS, NAME, SPLIT};
 
 use ssmarshal::{self, serialize};
 
 use crate::ble::services::Server;
 use crate::{KEY_REPORT, delay_ms};
 
-const CONNECTIONS_MAX: usize = SPLIT as usize + 2;
+const CONNECTIONS_MAX: usize = SPLIT_PERIPHERAL as usize + 1;
 
 const L2CAP_CHANNELS_MAX: usize = CONNECTIONS_MAX * 4;
 
@@ -99,7 +99,7 @@ pub async fn ble_peripheral_run<RNG, S>(
 
     // create the server
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
-        name: NAME,
+        name: BLE_NAME,
         appearance: &appearance::human_interface_device::KEYBOARD,
     }))
     .expect("Failed to create GATT Server");
@@ -122,14 +122,15 @@ pub async fn ble_peripheral_run<RNG, S>(
                                 // advertise to connect second central
                                 match advertise_hid(&mut peripheral, &server).await {
                                     Ok(conn_2) => {
+                                        delay_ms(2000).await;
+
                                         // set bondable
                                         conn_2
                                             .raw()
                                             .set_bondable(!bond_stored)
                                             .expect("[ble] error setting bondable");
 
-                                        let _ = select4(
-                                            battery_level_sense.approximate(),
+                                        let comm_tasks = select4(
                                             gatt_hid_events_handler(
                                                 &conn_2,
                                                 &server,
@@ -138,8 +139,12 @@ pub async fn ble_peripheral_run<RNG, S>(
                                             ),
                                             battery_service_task(&conn_2, &server),
                                             hid_kb_service_task(&conn_2, &server),
-                                        )
-                                        .await;
+                                            set_conn_params(&conn_2, stack),
+                                        );
+
+                                        let _ =
+                                            select(battery_level_sense.approximate(), comm_tasks)
+                                                .await;
                                     }
                                     Err(_e) => {
                                         #[cfg(feature = "defmt")]
@@ -230,7 +235,7 @@ async fn advertise_hid<'a, 'b>(
                 HUMAN_INTERFACE_DEVICE.to_le_bytes(),
                 SPLIT_SERVICE.to_le_bytes(),
             ]),
-            AdStructure::CompleteLocalName(NAME.as_bytes()),
+            AdStructure::CompleteLocalName(BLE_NAME.as_bytes()),
             AdStructure::Unknown {
                 ty: 0x19,
                 data: &trouble_host::prelude::appearance::human_interface_device::KEYBOARD
@@ -495,6 +500,59 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
     #[cfg(feature = "defmt")]
     error!("Disconnected reason: {}", _reason);
     Ok(())
+}
+
+/// Update connection params
+async fn update_conn_params(
+    conn: &GattConnection<'_, '_, DefaultPacketPool>,
+    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
+    params: &ConnectParams,
+) {
+    match conn.raw().update_connection_params(&stack, params).await {
+        Ok(_) => {
+            #[cfg(feature = "defmt")]
+            info!("[hid_adv] updated conn params");
+        }
+        Err(_e) => {
+            #[cfg(feature = "defmt")]
+            info!("[hid_adv] error: {}", _e);
+        }
+    };
+}
+
+/// Connection params update handler
+async fn set_conn_params(
+    conn: &GattConnection<'_, '_, DefaultPacketPool>,
+    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
+) {
+    delay_ms(5000).await;
+
+    let params = ConnectParams {
+        min_connection_interval: Duration::from_millis(15),
+        max_connection_interval: Duration::from_millis(15),
+        max_latency: 30,
+        min_event_length: Duration::from_secs(0),
+        max_event_length: Duration::from_secs(0),
+        supervision_timeout: Duration::from_secs(5),
+    };
+
+    update_conn_params(&conn, stack, &params).await;
+
+    delay_ms(5000).await;
+
+    let params = ConnectParams {
+        min_connection_interval: Duration::from_micros(7500),
+        max_connection_interval: Duration::from_micros(7500),
+        max_latency: 30,
+        min_event_length: Duration::from_secs(0),
+        max_event_length: Duration::from_secs(0),
+        supervision_timeout: Duration::from_secs(5),
+    };
+
+    update_conn_params(&conn, stack, &params).await;
+
+    // wait forever
+    core::future::pending::<()>().await;
 }
 
 /// Battery service task

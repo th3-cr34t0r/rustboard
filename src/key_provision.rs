@@ -8,9 +8,9 @@ use usbd_hid::descriptor::KeyboardReport;
 #[cfg(feature = "peripheral")]
 use crate::{
     KEY_REPORT, MATRIX_KEYS_SPLIT,
+    config::{KEYMAP_COLS, LAYERS, ROWS},
     keycodes::KeyType,
     keymap::provide_keymap,
-    {KEYMAP_COLS, LAYERS, ROWS},
 };
 
 #[cfg(feature = "central")]

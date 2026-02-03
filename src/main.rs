@@ -3,7 +3,7 @@
 
 use embassy_executor::Spawner;
 use embassy_futures::join::join3;
-use nrf_rustboard::{ble::ble_init_run, key_provision::KeyProvision, peripherals::AppPeri};
+use rustboard::{ble::ble_init_run, key_provision::KeyProvision, peripherals::AppPeri};
 
 use {defmt_rtt as _, panic_probe as _};
 

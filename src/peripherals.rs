@@ -7,9 +7,8 @@ use embassy_nrf::{
         SAADC, TEMP, TIMER0,
     },
 };
-use rustboard_macros::gen_output_pins;
 
-use crate::{Pins, ROW_PINS, ROWS, matrix::Matrix};
+use crate::matrix::Matrix;
 
 pub struct BlePeri {
     pub ppi_ch17: Peri<'static, PPI_CH17>,
@@ -78,19 +77,13 @@ impl<'a> AppPeri<'a> {
             saadc: p.SAADC,
         };
 
-        let mut rows: [Output<'_>; ROWS];
-
-        for (index, pin) in ROW_PINS.iter().enumerate() {
-            rows[index] = gen_output_pins!(pin);
-        }
-
-        // // init rows
-        // let rows = [
-        //     Output::new(p.P0_17, Level::Low, OutputDrive::Standard),
-        //     Output::new(p.P0_20, Level::Low, OutputDrive::Standard),
-        //     Output::new(p.P0_22, Level::Low, OutputDrive::Standard),
-        //     Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
-        // ];
+        // init rows
+        let rows = [
+            Output::new(p.P0_17, Level::Low, OutputDrive::Standard),
+            Output::new(p.P0_20, Level::Low, OutputDrive::Standard),
+            Output::new(p.P0_22, Level::Low, OutputDrive::Standard),
+            Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+        ];
 
         // init cols
         let cols = [
@@ -99,6 +92,7 @@ impl<'a> AppPeri<'a> {
             Input::new(p.P0_02, Pull::Down),
             Input::new(p.P1_15, Pull::Down),
             Input::new(p.P1_13, Pull::Down),
+            Input::new(p.P1_11, Pull::Down),
         ];
 
         // init matrix

@@ -1,5 +1,5 @@
 [package]
-name = "rustboard_source"
+name = "rustboard"
 version = "0.0.1"
 edition = "2024"
 
@@ -18,7 +18,6 @@ defmt = [
     "panic-probe/print-defmt",
     "nrf-sdc/defmt",
     "nrf-sdc/defmt",
-    # "bt-hci/defmt",
 ]
 
 [dependencies]
@@ -31,7 +30,6 @@ embassy-futures = "0.1.1"
 nrf-mpsl = { version = "0.3.0", features = ["critical-section-impl"] }
 nrf-sdc = { version = "0.4.0", features = ["nrf52840"] }
 trouble-host = { version = "0.5.1", features = ["default", "security"] }
-# bt-hci = { version = "0.7", default-features = false }
 
 embedded-storage-async = { version = "0.4.1"}
 sequential-storage = { version = "5.0.0" }
@@ -53,25 +51,9 @@ serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 ssmarshal = {version = "1.0.0", default-features = false}
 heapless = "0.9.1"
 
-rustboard_macros = { path = "rustboard_macros" }
-
-[build-dependencies]
-toml = { version = "0.9.11", default-featres = false, features = ["serde"] }
-serde = { version = "1.0.219", default-features = false, features = ["derive"] }
-const-gen = "1.6.8"
-
 [profile.release]
 debug = 2
 
 [patch.crates-io]
-# embassy-executor = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-time = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-nrf = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-sync = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-futures = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-time-driver = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# embassy-embedded-hal = {git = "https://github.com/embassy-rs/embassy.git", rev="729f96b9521d6705c1d664f4e9c636155d440519"}
-# nrf-sdc = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "36816b8ca6a30776886fad289921adf49ca54fee"}
-# nrf-mpsl = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "36816b8ca6a30776886fad289921adf49ca54fee"}
 nrf-sdc = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
 nrf-mpsl = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
