@@ -1,27 +1,74 @@
+use crate::keycodes::KC;
 use embassy_time::Duration;
+
+/// Name your keyboard
+pub const BLE_NAME: &str = "Rustboard";
 
 /// Rows per half
 pub const ROWS: usize = 4;
 
 /// Cols per half
-pub const COLS: usize = 6;
-
-/// Keymap cols
-pub const KEYMAP_COLS: usize = COLS + (SPLIT_PERIPHERAL as usize * COLS);
+pub const COLS: usize = 5;
 
 /// KeyMap total Layers
 pub const LAYERS: usize = 2;
 
-/// Name your keyboard
-pub const BLE_NAME: &str = "Rustboard_RW";
-
-/// Peripheral address for connecting central to peripheral - CREAMY PURPLE
-// pub const PERI_ADDRESS: [u8; 6] = [0x0c, 0x4d, 0x2e, 0xb4, 0x1d, 0xfb];
-/// Peripheral address for connecting central to peripheral - ROSEWOOD
-pub const PERI_ADDRESS: [u8; 6] = [0xaf, 0xbf, 0x09, 0xda, 0x0f, 0xd4];
-
 /// Specify if the keyboard is split
 pub const SPLIT_PERIPHERAL: bool = true;
+
+/// Peripheral address for connecting central to peripheral
+pub const PERI_ADDRESS: [u8; 6] = [0x0c, 0x4d, 0x2e, 0xb4, 0x1d, 0xfb]; // CREAMY PURPLE
+
+//*****************************************************************************************
+// LAYER 0:
+//
+//X \ Y|  0  |  1  |  2  |  3  |  4  |           X \ Y|  5  |  6  |  7  |  8  |  9  |
+//   0 |__'__|__,__|__.__|__p__|__y__|              0 |__f__|__g__|__c__|__r__|__l__|
+//   1 |__a__|__o__|__e__|__u__|__i__|              1 |__d__|__h__|__t__|__n__|__s__|
+//   2 |_CTL_|__q__|__j__|__k__|__x__|              2 |__b__|__m__|__w__|__v__|__z__|
+//   3             |SUPER|SPACE|SHIFT|              3 |_TAB_|ENTER|LYR_1|
+//
+//***********************************************************************************
+// LAYER
+//X \ Y|  0  |  1  |  2  |  3  |  4  |           X \ Y|  5  |  6  |  7  |  8  |  9  |
+//   0 |_ESC_|__7__|__8__|__9__|_PScr|              0 |_SLCK|__(__|__)__|__\__|__/__|
+//   1 |_BSP_|__4__|__5__|__6__|_DEL_|              1 |__-__|_left|_down|__up_|right|
+//   2 |__0__|__1__|__2__|__3__|_ALT_|              2 |__=__|__[__|__]__|__`__|__;__|
+//   3             |SUPER|SPACE|SHIFT|              3 |_TAB_|ENTER|LYR_1|
+//
+//*****************************************************************************************
+#[rustfmt::skip]
+pub fn provide_keymap() -> [[[KC; KEYMAP_COLS]; ROWS]; LAYERS] {
+
+[
+    [
+        /* LAYER 0 */  /*    COL 0           COL 1          COL 2           COL 3          COL 4                   COL 5         COL 6         COL 7       COL 8       COL 9     */
+        /*               +--------------+--------------+---------------+--------------+---------------+        +------------+--------------+-----------+-----------+------------+*/
+        /*  ROW 0  */ [/*|*/KC::Quote,/*|*/KC::Comma,/*|*/KC::Period,/*|*/KC::Pp,   /*|*/KC::Yy,    /*|        |*/KC::Ff, /*|*/KC::Gg,   /*|*/KC::Cc,/*|*/KC::Rr,/*|*/KC::Ll ,/*|*/],
+        /*               +--------------+--------------+--------------+---------------+---------------+        +------------+--------------+-----------+-----------+------------+*/
+        /*  ROW 1  */ [/*|*/KC::Aa,   /*|*/ KC::Oo,  /*|*/KC::Ee,    /*|*/KC::Uu,   /*|*/KC::Ii,    /*|        |*/KC::Dd, /*|*/KC::Hh,   /*|*/KC::Tt,/*|*/KC::Nn,/*|*/KC::Ss, /*|*/],
+        /*               +--------------+--------------+--------------+---------------+---------------+        +------------+--------------+-----------+-----------+------------+*/
+        /*  ROW 2  */ [/*|*/KC::LCtrl,/*|*/ KC::Qq,  /*|*/KC::Jj,    /*|*/KC::Kk,   /*|*/KC::Xx,    /*|        |*/KC::Bb, /*|*/KC::Mm,   /*|*/KC::Ww,/*|*/KC::Vv,/*|*/KC::Zz, /*|*/],
+        /*               +--------------+--------------+--------------+---------------+---------------+        +------------+--------------+-----------+-----------+------------+*/
+        /*  ROW 3  */ [/*|*/KC::EU,   /*|*/ KC::EU,  /*|*/KC::LGUI,  /*|*/KC::Space,/*|*/KC::LShift,/*|        |*/KC::Tab,/*|*/KC::Enter,/*|*/KC::L1,/*|*/KC::EU,/*|*/KC::EU, /*|*/],
+        /*               +--------------+--------------+--------------+---------------+---------------+        +------------+--------------+-----------+-----------+-----------+*/
+    ],
+    [
+        /* LAYER 1 */  /*       COL 0            COL 1       COL 2         COL 3          COL 4                       COL 5             COL 6                 COL 7              COL 8                 COL 9          */
+        /*               +-------------------+-----------+-------------+--------------+---------------+          +--------------+--------------------+---------------------+----------------------+------------------+*/
+        /*  ROW 0  */ [/*|*/ KC::Escape,   /*|*/KC::K7,/*|*/KC::K8,  /*|*/KC::K9,   /*|*/KC::PrintS,/*|          |*/KC::EU,   /*|*/KC::OpenParens, /*|*/KC::CloseParens, /*|*/KC::Bslash,       /*|*/KC::Fslash,   /*|*/],
+        /*               +-------------------+-----------+-------------+--------------+---------------+          +--------------+--------------------+---------------------+----------------------+------------------+*/
+        /*  ROW 1  */ [/*|*/ KC::Backspace,/*|*/KC::K4,/*|*/KC::K5,  /*|*/KC::K6,   /*|*/KC::Delete,/*|          |*/KC::Dash, /*|*/KC::LeftArr,    /*|*/KC::DownArr,     /*|*/KC::UpArr,        /*|*/KC::RightArr, /*|*/],
+        /*               +-------------------+-----------+-------------+--------------+---------------+          +--------------+--------------------+---------------------+----------------------+------------------+*/
+        /*  ROW 2  */ [/*|*/ KC::K0,       /*|*/KC::K1,/*|*/KC::K2,  /*|*/KC::K3,   /*|*/KC::LAlt,  /*|          |*/KC::Equal,/*|*/KC::OpenBracket,/*|*/KC::CloseBracket,/*|*/KC::BacktickTilde,/*|*/KC::SemiColon,/*|*/],
+        /*               +-------------------+-----------+-------------+--------------+---------------+          +--------------+--------------------+---------------------+----------------------+------------------+*/
+        /*  ROW 3  */ [/*|*/ KC::EU,       /*|*/KC::EU,/*|*/KC::LGUI,/*|*/KC::Space,/*|*/KC::LShift,/*|          |*/KC::Tab,  /*|*/KC::Enter,      /*|*/KC::L1,          /*|*/KC::EU,           /*|*/KC::EU,       /*|*/],
+        /*               +-------------------+-----------+-------------+--------------+---------------+          +--------------+--------------------+---------------------+----------------------+------------------+*/
+    ],
+]}
+
+/// Keymap cols
+pub const KEYMAP_COLS: usize = COLS + (SPLIT_PERIPHERAL as usize * COLS);
 
 /// Size of the registered matrix keys array
 pub const MATRIX_KEYS_BUFFER: usize = 6;

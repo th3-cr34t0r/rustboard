@@ -233,7 +233,6 @@ async fn advertise_hid<'a, 'b>(
             AdStructure::ServiceUuids16(&[
                 BATTERY.to_le_bytes(),
                 HUMAN_INTERFACE_DEVICE.to_le_bytes(),
-                SPLIT_SERVICE.to_le_bytes(),
             ]),
             AdStructure::CompleteLocalName(BLE_NAME.as_bytes()),
             AdStructure::Unknown {

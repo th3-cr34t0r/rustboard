@@ -92,7 +92,7 @@ impl<'a> AppPeri<'a> {
             Input::new(p.P0_02, Pull::Down),
             Input::new(p.P1_15, Pull::Down),
             Input::new(p.P1_13, Pull::Down),
-            Input::new(p.P1_11, Pull::Down),
+            // Input::new(p.P1_11, Pull::Down),
         ];
 
         // init matrix

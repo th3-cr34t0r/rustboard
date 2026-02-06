@@ -401,6 +401,9 @@ pub enum KC {
     L4 = 0xF3,
     /// Layer 5
     L5 = 0xF4,
+
+    // Enter Bootloader
+    BTL = 0xF5,
 }
 
 impl KC {

@@ -8,9 +8,9 @@ use usbd_hid::descriptor::KeyboardReport;
 #[cfg(feature = "peripheral")]
 use crate::{
     KEY_REPORT, MATRIX_KEYS_SPLIT,
+    config::provide_keymap,
     config::{KEYMAP_COLS, LAYERS, ROWS},
     keycodes::KeyType,
-    keymap::provide_keymap,
 };
 
 #[cfg(feature = "central")]
@@ -213,7 +213,7 @@ impl KeyProvision {
     async fn evaluate_enter_bootloader(&self, key: &Key) {
         if Instant::now() >= key.time + Duration::from_secs(5) {
             let key_pos_enter_bl = KeyPos { row: 0, col: 0 };
-            if key.position == key_pos_enter_bl {
+            if key.position == key_pos_enter_bl || key.code == KC::BTL {
                 // write to register to boot into BL
                 embassy_nrf::pac::POWER
                     .gpregret()
