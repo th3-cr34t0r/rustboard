@@ -417,6 +417,9 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                 #[cfg(feature = "defmt")]
                 info!("[gatt] pairing complete: {:?}", _security_level);
 
+                #[cfg(feature = "defmt")]
+                info!("[gatt] ***** bond information: {} *****", bond);
+
                 if let Some(bond_info) = bond {
                     store_bonding_info(storage, &bond_info)
                         .await
