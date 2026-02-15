@@ -2,7 +2,7 @@ use trouble_host::prelude::{
     characteristic::{BATTERY_LEVEL, BATTERY_LEVEL_STATUS},
     *,
 };
-use usbd_hid::descriptor::{SerializedDescriptor, generator_prelude::*};
+use usbd_hid::descriptor::{KeyboardReport, SerializedDescriptor};
 
 /// Custom service for the split device
 pub const SPLIT_SERVICE: BluetoothUuid16 = BluetoothUuid16::new(0xff11);
@@ -10,35 +10,6 @@ pub const SPLIT_SERVICE: BluetoothUuid16 = BluetoothUuid16::new(0xff11);
 /// Custom characteristics for the split device
 pub const SPLIT_REPORT_CH: BluetoothUuid16 = BluetoothUuid16::new(0xff22);
 pub const SPLIT_BATTERY_CH: BluetoothUuid16 = BluetoothUuid16::new(0xff33);
-
-/// KeyboardReport describes a report and its companion descriptor that can be
-/// used to send keyboard button presses to a host and receive the status of the
-/// keyboard LEDs.
-#[gen_hid_descriptor(
-    (collection = APPLICATION, usage_page = GENERIC_DESKTOP, usage = KEYBOARD) = {
-        (usage_page = KEYBOARD, usage_min = 0xE0, usage_max = 0xE7) = {
-            #[packed_bits 8] #[item_settings data,variable,absolute] modifier=input;
-        };
-        (logical_min = 0,) = {
-            #[item_settings constant,variable,absolute] reserved=input;
-        };
-        (usage_page = LEDS, usage_min = 0x01, usage_max = 0x05) = {
-            #[packed_bits 5] #[item_settings data,variable,absolute] leds=output;
-        };
-        (usage_page = KEYBOARD, usage_min = 0x00, usage_max = 0xDD) = {
-            #[item_settings data,array,absolute] keycodes=input;
-        };
-    }
-)]
-#[allow(dead_code)]
-#[derive(Default)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct KeyboardReport {
-    pub modifier: u8, // ModifierCombination
-    pub reserved: u8,
-    pub leds: u8, // LedIndicator
-    pub keycodes: [u8; 6],
-}
 
 #[gatt_server(cccd_table_size = 8, connections_max = 2)]
 pub(crate) struct Server {
@@ -60,8 +31,8 @@ pub(crate) struct BatteryService {
 pub(crate) struct HidService {
     #[characteristic(uuid = "2a4a", read, value = [0x01, 0x01, 0x00, 0x03])]
     pub(crate) hid_info: [u8; 4],
-    #[characteristic(uuid = "2a4b", read, value = KeyboardReport::desc().try_into().expect("Failed to convert KeyboardReport to [u8; 67]"))]
-    pub(crate) report_map: [u8; 67],
+    #[characteristic(uuid = "2a4b", read, value = KeyboardReport::desc().try_into().expect("Failed to convert KeyboardReport to [u8; 69]"))]
+    pub(crate) report_map: [u8; 69],
     #[characteristic(uuid = "2a4c", write_without_response)]
     pub(crate) hid_control_point: u8,
     #[characteristic(uuid = "2a4e", read, write_without_response, value = 1)]
