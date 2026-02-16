@@ -13,7 +13,6 @@ use nrf_sdc::Error;
 use nrf_sdc::SoftdeviceController;
 use rand::{CryptoRng, RngCore};
 use static_cell::StaticCell;
-use trouble_host::att::AttErrorCode;
 use trouble_host::gap::{GapConfig, PeripheralConfig};
 use trouble_host::gatt::{GattConnection, GattConnectionEvent, GattEvent};
 use trouble_host::prelude::service::{BATTERY, HUMAN_INTERFACE_DEVICE};
@@ -22,7 +21,7 @@ use trouble_host::prelude::{
     Peripheral, appearance,
 };
 use trouble_host::prelude::{AdvertisementParameters, TxPower};
-use trouble_host::prelude::{ConnectParams, PhyKind};
+use trouble_host::prelude::{PhyKind, RequestedConnParams};
 use trouble_host::{Address, BleHostError, Host, Stack};
 use trouble_host::{HostResources, IoCapabilities};
 
@@ -74,10 +73,10 @@ pub async fn ble_peripheral_run<RNG, S>(
         STACK.init(
             trouble_host::new(sdc, resources)
                 .set_random_address(address)
-                .set_random_generator_seed(rng)
-                .set_io_capabilities(IoCapabilities::NoInputNoOutput),
+                .set_random_generator_seed(rng),
         )
     };
+    stack.set_io_capabilities(IoCapabilities::NoInputNoOutput);
 
     // get the bond information
     let mut bond_stored = if let Some(bond_info) = load_bonding_info(storage).await {
@@ -122,13 +121,17 @@ pub async fn ble_peripheral_run<RNG, S>(
                                 // advertise to connect second central
                                 match advertise_hid(&mut peripheral, &server).await {
                                     Ok(conn_2) => {
-                                        delay_ms(2000).await;
-
                                         // set bondable
-                                        conn_2
-                                            .raw()
-                                            .set_bondable(!bond_stored)
-                                            .expect("[ble] error setting bondable");
+                                        match conn_2.raw().set_bondable(!bond_stored) {
+                                            Ok(_) => {
+                                                #[cfg(feature = "defmt")]
+                                                info!("[bondable] Bondable set");
+                                            }
+                                            Err(_e) => {
+                                                #[cfg(feature = "defmt")]
+                                                info!("[bondable] Bondable error: {}", _e);
+                                            }
+                                        }
 
                                         let comm_tasks = select4(
                                             gatt_hid_events_handler(
@@ -293,11 +296,11 @@ async fn gatt_split_events_handler<'stack, 'server>(
                 break reason;
             }
             GattConnectionEvent::PairingComplete {
-                security_level,
+                security_level: _sec_lvl,
                 bond: _,
             } => {
                 #[cfg(feature = "defmt")]
-                info!("[gatt] pairing complete: {:?}", security_level);
+                info!("[gatt] pairing complete: {:?}", _sec_lvl);
             }
             GattConnectionEvent::PairingFailed(_err) => {
                 #[cfg(feature = "defmt")]
@@ -305,18 +308,7 @@ async fn gatt_split_events_handler<'stack, 'server>(
             }
             GattConnectionEvent::Gatt { event } => {
                 match &event {
-                    GattEvent::Read(_event) => {
-                        if conn
-                            .raw()
-                            .security_level()
-                            .expect("[gatt] error getting security level")
-                            .encrypted()
-                        {
-                            None
-                        } else {
-                            Some(AttErrorCode::INSUFFICIENT_ENCRYPTION)
-                        }
-                    }
+                    GattEvent::Read(_event) => {}
                     GattEvent::Write(event) => {
                         if event.handle() == split_service_registered_keys.handle {
                             // central message to peripheral
@@ -364,20 +356,15 @@ async fn gatt_split_events_handler<'stack, 'server>(
                             #[cfg(feature = "defmt")]
                             info!("[split_battery_level] central bat lvl rcvd",);
                         }
-
-                        if conn
-                            .raw()
-                            .security_level()
-                            .expect("[gatt] error getting security level")
-                            .encrypted()
-                        {
-                            None
-                        } else {
-                            Some(AttErrorCode::INSUFFICIENT_ENCRYPTION)
-                        }
                     }
-
-                    _ => None, // OTHER
+                    GattEvent::NotAllowed(_event) => {
+                        #[cfg(feature = "defmt")]
+                        info!(
+                            "[gatt] Dissallowed GATT request to handle: {:?}",
+                            _event.handle()
+                        );
+                    }
+                    _ => {}
                 };
 
                 match event.accept() {
@@ -445,17 +432,6 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                             #[cfg(feature = "defmt")]
                             info!("[gatt] Read Event to Level Characteristic: {:?}", _value);
                         }
-
-                        if conn
-                            .raw()
-                            .security_level()
-                            .expect("[gatt] error getting security level")
-                            .encrypted()
-                        {
-                            None
-                        } else {
-                            Some(AttErrorCode::INSUFFICIENT_ENCRYPTION)
-                        }
                     }
                     GattEvent::Write(event) => {
                         if event.handle() == hid_service_report_map.handle {
@@ -471,20 +447,15 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                                 event.data()
                             );
                         }
-
-                        if conn
-                            .raw()
-                            .security_level()
-                            .expect("[gatt] error getting security level")
-                            .encrypted()
-                        {
-                            None
-                        } else {
-                            Some(AttErrorCode::INSUFFICIENT_ENCRYPTION)
-                        }
                     }
-
-                    _ => None, // OTHER
+                    GattEvent::NotAllowed(_event) => {
+                        #[cfg(feature = "defmt")]
+                        info!(
+                            "[gatt] Dissallowed GATT request to handle: {:?}",
+                            _event.handle()
+                        );
+                    }
+                    _ => {} // OTHER
                 };
 
                 match event.accept() {
@@ -508,7 +479,7 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
 async fn update_conn_params(
     conn: &GattConnection<'_, '_, DefaultPacketPool>,
     stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
-    params: &ConnectParams,
+    params: &RequestedConnParams,
 ) {
     match conn.raw().update_connection_params(&stack, params).await {
         Ok(_) => {
@@ -529,7 +500,7 @@ async fn set_conn_params(
 ) {
     delay_ms(5000).await;
 
-    let params = ConnectParams {
+    let params = RequestedConnParams {
         min_connection_interval: Duration::from_millis(15),
         max_connection_interval: Duration::from_millis(15),
         max_latency: 30,
@@ -542,7 +513,7 @@ async fn set_conn_params(
 
     delay_ms(5000).await;
 
-    let params = ConnectParams {
+    let params = RequestedConnParams {
         min_connection_interval: Duration::from_micros(7500),
         max_connection_interval: Duration::from_micros(7500),
         max_latency: 30,
