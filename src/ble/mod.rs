@@ -59,7 +59,7 @@ const L2CAP_MTU: usize = 251;
 const SDC_MEMORY_SIZE: usize = 2816; // bytes
 #[cfg(feature = "peripheral")]
 /// Default memory allocation for softdevice controller in bytes.
-const SDC_MEMORY_SIZE: usize = 5080; // bytes
+const SDC_MEMORY_SIZE: usize = 5064; // bytes
 
 #[embassy_executor::task]
 async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
@@ -96,19 +96,19 @@ fn build_sdc<'a, const N: usize>(
 ) -> Result<SoftdeviceController<'a>, nrf_sdc::Error> {
     if cfg!(feature = "central") {
         sdc::Builder::new()?
-            .support_scan()?
-            .support_central()?
-            .support_le_2m_phy()?
-            .support_phy_update_central()?
+            .support_scan()
+            .support_central()
+            .support_le_2m_phy()
+            .support_phy_update_central()
             .central_count(1)?
             .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
             .build(p, rng, mpsl, mem)
     } else {
         sdc::Builder::new()?
-            .support_adv()?
-            .support_peripheral()?
-            .support_le_2m_phy()?
-            .support_phy_update_peripheral()?
+            .support_adv()
+            .support_peripheral()
+            .support_le_2m_phy()
+            .support_phy_update_peripheral()
             .peripheral_count(2)?
             .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
             .build(p, rng, mpsl, mem)
@@ -173,7 +173,7 @@ pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
     let sdc = build_sdc(sdc_p, sdc_rng, mpsl, sdc_mem).expect("[ble] Error building SDC");
 
     // run the mpsl task
-    spawner.must_spawn(mpsl_task(mpsl));
+    spawner.spawn(mpsl_task(mpsl).unwrap());
 
     #[cfg(feature = "central")]
     crate::ble::central::ble_central_run(
