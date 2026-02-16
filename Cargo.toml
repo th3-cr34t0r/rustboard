@@ -1,6 +1,6 @@
 [package]
 name = "rustboard"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 
 [features]
@@ -23,13 +23,13 @@ defmt = [
 [dependencies]
 embassy-executor = { version = "0.9.0", features = ["arch-cortex-m", "executor-thread", "executor-interrupt" ] }
 embassy-time = { version = "0.5.0" }
-embassy-nrf = { version = "0.8", features = ["time-driver-rtc1", "gpiote", "unstable-pac", "time","nfc-pins-as-gpio", "nrf52840" ] }
+embassy-nrf = { version = "0.9", features = ["time-driver-rtc1", "gpiote", "unstable-pac", "time","nfc-pins-as-gpio", "nrf52840" ] }
 embassy-sync = "0.7.0"
 embassy-futures = "0.1.1"
 
 nrf-mpsl = { version = "0.3.0", features = ["critical-section-impl"] }
 nrf-sdc = { version = "0.4.0", features = ["nrf52840"] }
-trouble-host = { version = "0.5.1", features = ["default", "security"] }
+trouble-host = { version = "0.6.0", features = ["default", "security"] }
 
 embedded-storage-async = { version = "0.4.1"}
 sequential-storage = { version = "5.0.0" }
@@ -55,5 +55,14 @@ heapless = "0.9.1"
 debug = 2
 
 [patch.crates-io]
-nrf-sdc = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
-nrf-mpsl = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
+# nrf-sdc = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
+# nrf-mpsl = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "11d5c3c"}
+embassy-executor = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-nrf = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-sync = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-futures = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-time = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-time-driver = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+embassy-embedded-hal = {git = "https://github.com/embassy-rs/embassy.git", rev="ed8d4277cd8165c8b280ccbb1501534056691b6a"}
+nrf-sdc = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "df7e3b4f363275e2c9ad42005758cf3eb8a798e0"}
+nrf-mpsl = { git = "https://github.com/alexmoon/nrf-sdc.git", rev = "df7e3b4f363275e2c9ad42005758cf3eb8a798e0"}
