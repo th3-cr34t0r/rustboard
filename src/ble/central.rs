@@ -1,5 +1,5 @@
 #[cfg(feature = "defmt")]
-use defmt::{info, warn};
+use defmt::{error, info, warn};
 use embassy_futures::{
     join::join,
     select::{select, select3},
@@ -17,8 +17,8 @@ use trouble_host::{
     Address, Host, HostResources, Stack,
     gatt::GattClient,
     prelude::{
-        Central, Characteristic, ConnectConfig, ConnectParams, Connection, DefaultPacketPool,
-        ScanConfig, Uuid,
+        Central, Characteristic, ConnectConfig, Connection, ConnectionEvent, DefaultPacketPool,
+        RequestedConnParams, ScanConfig, Uuid,
     },
 };
 
@@ -79,6 +79,9 @@ pub async fn ble_central_run<RNG, S>(
             #[cfg(feature = "defmt")]
             info!("[ble_connect] connected to peripheral");
 
+            // gatt tasks
+            connection_events_handler(&conn, stack).await;
+
             // create client
             let client = {
                 static CLIENT: StaticCell<
@@ -105,13 +108,46 @@ pub async fn ble_central_run<RNG, S>(
     .await;
 }
 
+async fn connection_events_handler<'stack, 'server, 'a>(
+    conn: &Connection<'a, DefaultPacketPool>,
+    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
+) {
+    conn.request_security().unwrap();
+    loop {
+        match conn.next().await {
+            ConnectionEvent::PairingComplete {
+                security_level: _sec_lvl,
+                bond: _bond,
+            } => {
+                #[cfg(feature = "defmt")]
+                info!("[gatt] pairing complete: {:?}", _sec_lvl);
+                break;
+            }
+            ConnectionEvent::PairingFailed(_err) => {
+                #[cfg(feature = "defmt")]
+                error!("[gatt] pairing failed: {:?}", _err);
+                break;
+            }
+            ConnectionEvent::Disconnected { reason: _rsn } => {
+                #[cfg(feature = "defmt")]
+                error!("[gatt] Disconnected: {:?}", _rsn);
+                break;
+            }
+            ConnectionEvent::RequestConnectionParams(req) => {
+                req.accept(None, &stack).await.unwrap()
+            }
+            _ => {}
+        }
+    }
+}
+
 async fn connect<'a, 'b>(
     central: &mut Central<'a, SoftdeviceController<'b>, DefaultPacketPool>,
 ) -> Result<Connection<'a, DefaultPacketPool>, Error> {
     // address of the target split kb
     let target = Address::random(PERI_ADDRESS);
 
-    let conn_params = ConnectParams {
+    let conn_params = RequestedConnParams {
         min_connection_interval: Duration::from_micros(7500),
         max_connection_interval: Duration::from_micros(7500),
         max_latency: 0,
