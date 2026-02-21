@@ -251,6 +251,7 @@ impl KeyProvision {
         let mut matrix_keys_receiver = MATRIX_KEYS_LOCAL
             .receiver()
             .expect("[key_provision] unable to create matrix_key_local_receiver");
+
         #[cfg(feature = "peripheral")]
         let mut matrix_keys_split_receiver = MATRIX_KEYS_SPLIT
             .receiver()
@@ -262,7 +263,7 @@ impl KeyProvision {
         let message_to_peri = MESSAGE_TO_PERI.sender();
 
         let mut matrix_keys_local = [Key::default(); MATRIX_KEYS_COMB_BUFFER];
-        // let mut matrix_keys_local: Vec<Key, { MATRIX_KEYS_COMB_BUFFER }> = Vec::new();
+
         let mut keys_to_remove: Vec<Key, { MATRIX_KEYS_COMB_BUFFER }> = Vec::new();
 
         loop {
