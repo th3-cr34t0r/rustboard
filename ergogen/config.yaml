@@ -1,0 +1,294 @@
+units:
+  kx: cx + 1.5
+  ky: cy + 1.5
+  px: cx + 3
+  py: cy + 3
+  shell_fillet: 2
+points:
+  key.tags: 
+    - key
+  zones:
+    matrix:
+      anchor:
+        shift: [150, -150] # Fix KiCad placement
+      columns:
+        c0:
+          key.splay: 0
+          key.stagger: 0
+          key.spread: kx
+          key.col_net: P031
+        c1:
+          key.splay: -5
+          key.stagger: 15
+          key.spread: kx 
+          key.col_net: P029
+        c2:
+          key.splay: -5
+          key.stagger: 10
+          key.spread: kx
+          key.col_net: P002
+        c3:
+          key.splay: -5
+          key.stagger: -10
+          key.spread: kx  
+          key.col_net: P115
+        c4:
+          key.splay: -5
+          key.stagger: -5
+          key.spread: kx
+          key.col_net: P113
+      rows:
+        r2:
+          row_net: P022
+        r1:
+          row_net: P020
+        r0:
+          row_net: P017
+    thumbfan:
+      anchor:
+        ref: matrix_c4_r2
+        shift: [-8, -20]
+      columns:
+        c2:
+          key.spread: kx
+          key.splay: -15
+          key.col_net: P002
+        c3:
+          key.spread: kx
+          key.splay: -15
+          key.origin: [-10, -10]
+          key.col_net: P115
+        c4:
+          key.spread: kx
+          key.splay: -15
+          key.origin: [-10, -10]
+          key.col_net: P113
+      rows:
+        r3:
+          row_net: P024
+    mcu:
+      key.tags:
+        - helper
+      anchor:
+        - ref: matrix_c4_r0
+          shift: [21,u/2-33/2]
+    screw_1:
+      key.tags:
+        - helper
+        - screw
+      anchor:
+        - ref: matrix_c0_r0
+          shift: [u/2+2, 6.5]
+    screw_2:
+      key.tags:
+        - helper
+        - screw
+      anchor: 
+        - ref: matrix_c0_r0
+          shift: [u/2+2, -2u-6]
+    screw_3:
+      key.tags:
+        - helper
+        - screw
+      anchor: 
+        aggregate.parts:
+        - ref: matrix_c0_r0
+          shift: [4u+2.7, 7]
+    screw_4:
+      key.tags:
+        - helper
+        - screw
+      anchor: 
+        - ref: matrix_c0_r0
+          shift: [4u+2.7, -3u+4         ]
+outlines:
+  _keycaps:
+    - what: rectangle
+      where: [key]
+      size: 18
+      fillet: 3
+    - what: rectangle
+      where: [key_1_5u]
+      size: [18*1.5,18]
+      fillet: 3
+  _mcu:
+    - what: rectangle
+      where: [mcu]
+      size: [17.78,33]
+      fillet: 1
+    - what: rectangle
+      where: [mcu]
+      size: [8.94,7.35]
+      fillet: 0.1
+      operation: stack
+      adjust:
+        shift: [0,33/2-7.35/2+0.7]
+  _screws:
+    - what: circle
+      where: [screw]
+      radius: 3
+  _keys:
+    - what: rectangle
+      where: /matrix/
+      size: u
+    - what: polygon
+      points:
+        - ref: matrix_c1_r0
+          shift: [u/2,-u/2]
+        - ref: thumbfan_c2_r3
+          shift: [-u/2,u/2]
+          affect: [x]
+        - ref: thumbfan_c2_r3
+          shift: [-u/2,u/2]
+          affect: [y]
+        - ref: thumbfan_c3_r3
+          shift: [u/2,u/2]
+          affect: [x,y]
+        - ref: matrix_c4_r2
+          shift: [u/2,-u]
+        - ref: matrix_c4_r2
+          shift: [u/2,-u/2]
+  rustboard_outline:
+    - what: rectangle
+      where: [mcu]
+      size: [18,33]
+    - what: polygon
+      points:
+        - ref: thumbfan_c2_r3
+          shift: [-0.5px,-0.5py]
+        - ref: thumbfan_c3_r3
+          shift: [-0.45px,-0.5py]
+        - ref: thumbfan_c4_r3
+          shift: [-0.45px,-0.5py]
+        - ref: thumbfan_c4_r3
+          shift: [0.5px,-0.5py]
+        - ref: thumbfan_c4_r3
+          shift: [0.5px,0.5py]
+        - ref: thumbfan_c4_r3
+          shift: [-0.3px,0.5py]
+        - ref: matrix_c4_r0
+          shift: [1.52px,0.5py]
+        - ref: matrix_c4_r0
+          shift: [-0.5px,0.5py]
+        - ref: matrix_c3_r0
+          shift: [0.5px,0.5py]
+        - ref: matrix_c3_r0
+          shift: [-0.5px,0.5py]
+        - ref: matrix_c2_r0
+          shift: [0.5px,0.5py]
+        - ref: matrix_c2_r0
+          shift: [-0.5px,0.5py]
+        - ref: matrix_c1_r0
+          shift: [0.5px,0.5py]
+        - ref: matrix_c1_r0
+          shift: [-0.5px,0.5py]
+        - ref: matrix_c0_r0
+          shift: [0.5px,0.5py]
+        - ref: matrix_c0_r0
+          shift: [-0.5px,0.5py]
+        - ref: matrix_c0_r2
+          shift: [-0.5px,-0.5py]
+        - ref: matrix_c0_r2
+          shift: [0.5px,-0.5py]
+      fillet: shell_fillet
+  preview:
+    - what: outline
+      name: rustboard_outline
+    - what: outline
+      name: _keycaps
+      operation: stack
+    - what: outline
+      name: _mcu
+      operation: stack
+    - what: outline
+      name: _screws
+      operation: stack
+pcbs:
+  rustboard_pcb:
+    template: kicad8
+    outlines:
+      board:
+        outline: rustboard_outline
+    footprints:
+      switches:
+        what: ceoloide/switch_choc_v1_v2
+        where:
+          - /matrix_c[0-4]_r[0-2]/
+          - /thumbfan_c[2-4]_r3/
+        params:  &switches
+          from: "{{colrow}}"
+          to: "{{col_net}}"
+          choc_v1_support: false
+          include_plated_holes: false
+          hotswap: true
+          reversible: true
+          include_stabilizer_pad: false
+        adjust:
+          rotate: 180
+      diodes:
+        what: ceoloide/diode_tht_sod123
+        where: /key/
+        params:
+          from: "{{colrow}}"
+          to: "{{row_net}}"
+          reversible: true
+        adjust:
+          shift: [5.7,0]
+          rotate: 180
+      mcu:
+        what: ceoloide/mcu_nice_nano
+        where: mcu
+        params:
+          reversible: true
+          reverse_mount: true
+          show_silk_labels: false
+          use_rectangular_jumpers: false
+          RAW: "B+"
+          GND: "RAW"
+          RST: "GND"
+          VCC: "RST"
+          P21: "VCC"
+          P20: "P031"
+          P19: "P029"
+          P18: "P002"
+          P15: "P115" 
+          P14: "P113"
+          P16: "P111"
+          P10: "P010"
+          P9: "P104"
+          P8: "P011"
+          P7: "P100"
+          P6: "P024"
+          P5: "P022"
+          P4: "P020"
+          P3: "P017"
+          P2: "GND"
+          P0: "P006"
+          P1: "B-"
+      on_off_switch:
+        what: ceoloide/power_switch_smd_side
+        where: matrix_c4_r1
+        params:
+          reversible: true
+          from: BAT_P
+          to: B+
+        adjust:
+          shift: [30,-12]
+          rotate: 0
+      battery_connector:
+        what: ceoloide/battery_connector_jst_ph_2
+        where: matrix_c4_r1
+        params:
+          reversible: true
+        adjust:
+          shift: [14, -12]
+          rotate: 90
+      # m3_screws:
+      #   what: ceoloide/mounting_hole_npth
+      #   where: /screw/ 
+      #   params:
+      #     hole_size: 4.6
+      #     hole_drill: 3.3
+
+
+
