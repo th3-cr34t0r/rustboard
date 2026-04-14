@@ -107,7 +107,7 @@ impl KeyProvision {
             //     }
             KeyType::Layer => {
                 // set previous layer
-                self.layer -= 1;
+                self.layer -= kc.get_layer();
             }
             KeyType::Modifier => {
                 // remove the modifier
