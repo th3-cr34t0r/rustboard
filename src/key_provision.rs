@@ -1,5 +1,5 @@
 #[cfg(feature = "defmt")]
-use defmt::info;
+use defmt::{error, info};
 #[cfg(feature = "peripheral")]
 use embassy_futures::select::{Either, select};
 #[cfg(feature = "peripheral")]
@@ -22,8 +22,14 @@ use crate::{
     keycodes::KC,
     matrix::{Key, KeyPos, KeyState},
 };
+use embassy_sync::pubsub::WaitResult;
 use embassy_time::{Duration, Instant};
 use heapless::Vec;
+
+enum OffsetIndex {
+    No,
+    Yes,
+}
 
 pub struct KeyProvision {
     #[cfg(feature = "peripheral")]
@@ -31,11 +37,9 @@ pub struct KeyProvision {
     #[cfg(feature = "peripheral")]
     keymap: [[[KC; KEYMAP_COLS]; ROWS]; LAYERS],
     #[cfg(feature = "peripheral")]
-    keyreport_local: KeyboardReport,
+    keyreport: KeyboardReport,
     #[cfg(feature = "central")]
     message_to_peri_local: [u8; 6],
-    #[cfg(feature = "central")]
-    message_to_peri_local_old: [u8; 6],
 }
 
 impl KeyProvision {
@@ -46,12 +50,10 @@ impl KeyProvision {
             #[cfg(feature = "peripheral")]
             keymap: provide_keymap(),
             #[cfg(feature = "peripheral")]
-            keyreport_local: KeyboardReport::default(),
+            keyreport: KeyboardReport::default(),
 
             #[cfg(feature = "central")]
             message_to_peri_local: [255; 6],
-            #[cfg(feature = "central")]
-            message_to_peri_local_old: [255; 6],
         }
     }
     #[cfg(feature = "peripheral")]
@@ -69,7 +71,7 @@ impl KeyProvision {
                 self.layer = kc.get_layer();
             }
             KeyType::Modifier => {
-                self.keyreport_local.modifier |= kc.get_modifier();
+                self.keyreport.modifier |= kc.get_modifier();
             }
             // KeyType::Mouse => {
             //     // set the mouse command to the mouse ble characteristic
@@ -77,16 +79,13 @@ impl KeyProvision {
             // }
             KeyType::Key => {
                 // check if the key count is less than 6
-                if !self.keyreport_local.keycodes.contains(&(*kc as u8)) {
+                if !self.keyreport.keycodes.contains(&(*kc as u8)) {
                     // find the first key slot in the array that is free
-                    if let Some(index) = self
-                        .keyreport_local
-                        .keycodes
-                        .iter()
-                        .position(|&value| value == 0)
+                    if let Some(index) =
+                        self.keyreport.keycodes.iter().position(|&value| value == 0)
                     {
                         // add the new key to that position
-                        self.keyreport_local.keycodes[index] = *kc as u8
+                        self.keyreport.keycodes[index] = *kc as u8
                     }
                 }
             }
@@ -111,7 +110,7 @@ impl KeyProvision {
             }
             KeyType::Modifier => {
                 // remove the modifier
-                self.keyreport_local.modifier &= !kc.get_modifier();
+                self.keyreport.modifier &= !kc.get_modifier();
             }
             // KeyType::Mouse => {
             //     // remove the mouse command from the mouse ble characteristic
@@ -120,25 +119,31 @@ impl KeyProvision {
             KeyType::Key => {
                 // find the key index of the released key
                 if let Some(index) = self
-                    .keyreport_local
+                    .keyreport
                     .keycodes
                     .iter()
                     .position(|&value| value == *kc as u8)
                 {
                     // remove the key from the keyreport_local
-                    self.keyreport_local.keycodes[index] = 0;
+                    self.keyreport.keycodes[index] = 0;
                 }
             }
             _ => {}
         }
     }
 
-    async fn matrix_to_hid_local(
+    async fn matrix_to_hid(
         &self,
         matrix_keys_local: &mut [Key; MATRIX_KEYS_COMB_BUFFER],
         matrix_keys_received: &[KeyPos; MATRIX_KEYS_BUFFER],
+        offset_index: &OffsetIndex,
     ) {
-        for (index_received, key_pos_received) in matrix_keys_received.iter().enumerate() {
+        for (mut index_received, key_pos_received) in matrix_keys_received.iter().enumerate() {
+            match offset_index {
+                OffsetIndex::No => {}
+                OffsetIndex::Yes => index_received += MATRIX_KEYS_BUFFER,
+            }
+
             if *key_pos_received != KeyPos::default() {
                 #[cfg(feature = "defmt")]
                 info!(
@@ -158,43 +163,6 @@ impl KeyProvision {
 
                         #[cfg(feature = "central")]
                         code: KC::Reserved,
-                        position: *key_pos_received,
-                        state: KeyState::Pressed,
-                        time: Instant::now(),
-                    };
-
-                    // set the new key in an empty slot
-                    matrix_keys_local[index_received] = key;
-                }
-            } else if matrix_keys_local[index_received].position != KeyPos::default() {
-                matrix_keys_local[index_received].state = KeyState::Released;
-            }
-        }
-    }
-
-    #[cfg(feature = "peripheral")]
-    async fn matrix_to_hid_split(
-        &self,
-        matrix_keys_local: &mut [Key; MATRIX_KEYS_COMB_BUFFER],
-        matrix_keys_received: &[KeyPos; MATRIX_KEYS_BUFFER],
-    ) {
-        for (index_received, key_pos_received) in matrix_keys_received.iter().enumerate() {
-            let index_received = index_received + MATRIX_KEYS_BUFFER;
-            if *key_pos_received != KeyPos::default() {
-                #[cfg(feature = "defmt")]
-                info!(
-                    "[matrix_to_hid] matrix_keys_received: r{} c{}",
-                    key_pos_received.row, key_pos_received.col
-                );
-
-                // if new key is not contained, add it
-                if !matrix_keys_local
-                    .iter()
-                    .any(|key| key.position == *key_pos_received)
-                {
-                    let key = Key {
-                        code: self.keymap[self.layer as usize][key_pos_received.row as usize]
-                            [key_pos_received.col as usize],
                         position: *key_pos_received,
                         state: KeyState::Pressed,
                         time: Instant::now(),
@@ -229,6 +197,7 @@ impl KeyProvision {
     /// Provision combo keys
     async fn provision_combos(&mut self, matrix_keys_local: &mut [Key; MATRIX_KEYS_COMB_BUFFER]) {
         let keys_to_remove: Vec<KC, { MATRIX_KEYS_COMB_BUFFER }> = Vec::from([KC::LCtrl, KC::Dd]);
+
         let keys_to_add: Vec<KC, { MATRIX_KEYS_COMB_BUFFER }> =
             Vec::from([KC::LCtrl, KC::Backspace]);
 
@@ -249,18 +218,20 @@ impl KeyProvision {
     /// Main provision loop
     pub async fn run(&mut self) {
         let mut matrix_keys_receiver = MATRIX_KEYS_LOCAL
-            .receiver()
+            .subscriber()
             .expect("[key_provision] unable to create matrix_key_local_receiver");
 
         #[cfg(feature = "peripheral")]
         let mut matrix_keys_split_receiver = MATRIX_KEYS_SPLIT
-            .receiver()
+            .subscriber()
             .expect("[key_provision] unable to create matrix_key_split_receiver");
 
         #[cfg(feature = "peripheral")]
-        let key_report_sender = KEY_REPORT.sender();
+        let key_report_sender = KEY_REPORT.publisher().expect("Error creating publisher");
         #[cfg(feature = "central")]
-        let message_to_peri = MESSAGE_TO_PERI.sender();
+        let message_to_peri = MESSAGE_TO_PERI
+            .publisher()
+            .expect("Error creating publisher");
 
         let mut matrix_keys_local = [Key::default(); MATRIX_KEYS_COMB_BUFFER];
 
@@ -269,28 +240,44 @@ impl KeyProvision {
         loop {
             #[cfg(feature = "peripheral")]
             match select(
-                matrix_keys_receiver.changed(),
-                matrix_keys_split_receiver.changed(),
+                matrix_keys_receiver.next_message(),
+                matrix_keys_split_receiver.next_message(),
             )
             .await
             {
                 Either::First(matrix_keys_received) => {
-                    // transform the received local matrix keys
-                    self.matrix_to_hid_local(&mut matrix_keys_local, &matrix_keys_received)
-                        .await;
+                    if let WaitResult::Message(rcvd_keys) = matrix_keys_received {
+                        // transform the received local matrix keys
+                        self.matrix_to_hid(&mut matrix_keys_local, &rcvd_keys, &OffsetIndex::No)
+                            .await;
+                    } else {
+                        #[cfg(feature = "defmt")]
+                        error!("[key_provision] pubsub channel lagged");
+                    }
                 }
                 Either::Second(matrix_keys_split_received) => {
-                    // transform the received split matrix keys
-                    self.matrix_to_hid_split(&mut matrix_keys_local, &matrix_keys_split_received)
-                        .await;
+                    if let WaitResult::Message(rcvd_keys) = matrix_keys_split_received {
+                        // transform the received local matrix keys
+                        self.matrix_to_hid(&mut matrix_keys_local, &rcvd_keys, &OffsetIndex::Yes)
+                            .await;
+                    } else {
+                        #[cfg(feature = "defmt")]
+                        error!("[key_provision] pubsub channel lagged");
+                    }
                 }
             }
 
             #[cfg(feature = "central")]
             {
-                let matrix_keys_received = matrix_keys_receiver.changed().await;
-                self.matrix_to_hid_local(&mut matrix_keys_local, &matrix_keys_received)
-                    .await;
+                let matrix_keys_received = matrix_keys_receiver.next_message().await;
+
+                if let WaitResult::Message(rcvd_keys) = matrix_keys_received {
+                    self.matrix_to_hid(&mut matrix_keys_local, &rcvd_keys, &OffsetIndex::No)
+                        .await;
+                } else {
+                    #[cfg(feature = "defmt")]
+                    error!("[key_provision] pubsub channel lagged");
+                }
             }
 
             // provision combos
@@ -378,27 +365,23 @@ impl KeyProvision {
             // send report
             #[cfg(feature = "peripheral")]
             {
-                key_report_sender.send(self.keyreport_local);
+                key_report_sender.publish(self.keyreport).await;
 
                 #[cfg(feature = "defmt")]
                 info!(
                     "[key_provision] keyreport_local.keycodes: {:?}",
-                    self.keyreport_local.keycodes
+                    self.keyreport.keycodes
                 );
             }
             #[cfg(feature = "central")]
             {
-                if self.message_to_peri_local != self.message_to_peri_local_old {
-                    #[cfg(feature = "defmt")]
-                    info!(
-                        "[key_provision] message_to_peri_local: {:?}",
-                        self.message_to_peri_local
-                    );
+                #[cfg(feature = "defmt")]
+                info!(
+                    "[key_provision] message_to_peri_local: {:?}",
+                    self.message_to_peri_local
+                );
 
-                    message_to_peri.send(self.message_to_peri_local);
-
-                    self.message_to_peri_local_old = self.message_to_peri_local;
-                }
+                message_to_peri.publish(self.message_to_peri_local).await;
             }
         }
     }
