@@ -70,7 +70,7 @@ impl Default for MatrixKey {
 pub struct Matrix<'a> {
     rows: [Output<'a>; ROWS],
     cols: [Input<'a>; COLS],
-    reg_keys: [MatrixKey; MATRIX_KEYS_BUFFER],
+    keys: [MatrixKey; MATRIX_KEYS_BUFFER],
     keys_to_send_new: [KeyPos; MATRIX_KEYS_BUFFER],
     keys_to_send_old: [KeyPos; MATRIX_KEYS_BUFFER],
 }
@@ -80,7 +80,7 @@ impl<'a> Matrix<'a> {
         Self {
             rows,
             cols,
-            reg_keys: [MatrixKey::default(); MATRIX_KEYS_BUFFER],
+            keys: [MatrixKey::default(); MATRIX_KEYS_BUFFER],
             keys_to_send_new: [KeyPos::default(); MATRIX_KEYS_BUFFER],
             keys_to_send_old: [KeyPos::default(); MATRIX_KEYS_BUFFER],
         }
@@ -91,7 +91,7 @@ impl<'a> Matrix<'a> {
         let instant = Instant::now();
 
         for c_key in self
-            .reg_keys
+            .keys
             .iter_mut()
             .filter(|c_key| c_key.keypos != KeyPos::default())
         {
@@ -103,48 +103,48 @@ impl<'a> Matrix<'a> {
         }
     }
 
-    /// Main function for scanning and registering keys
-    pub async fn scan(&mut self) {
-        let matrix_keys_sender = MATRIX_KEYS_LOCAL.sender();
-
-        loop {
-            if self
-                .reg_keys
-                .iter()
-                .all(|m_key| m_key.keypos == KeyPos::default())
-            {
-                for row in self.rows.iter_mut() {
-                    row.set_high();
-                    // delay so port propagates
-                    delay_us(1).await;
-                }
-
-                // set cols wait for high
-                let mut futures: Vec<_, COLS> = self
-                    .cols
-                    .iter_mut()
-                    .map(|col| col.wait_for_any_edge())
-                    .collect();
-
-                match select(
-                    select_slice(pin!(futures.as_mut_slice())),
-                    delay_ms(ENTER_SLEEP_DEBOUNCE),
-                )
-                .await
-                {
-                    Either::First(_) => {
-                        // key has been pressed, but first set all rows to low
-                        for row in self.rows.iter_mut() {
-                            row.set_low();
-                        }
-                    }
-                    Either::Second(()) => {
-                        // enter sleep
-                        // TODO:
-                    }
-                }
+    async fn enter_async_interrupt(&mut self) {
+        if self.keys.iter().all(|key| key.keypos == KeyPos::default()) {
+            for row in self.rows.iter_mut() {
+                row.set_high();
+                // delay so port propagates
+                delay_us(10).await;
             }
 
+            // set cols wait for high
+            let mut futures: Vec<_, COLS> = self
+                .cols
+                .iter_mut()
+                .map(|col| col.wait_for_high())
+                .collect();
+
+            match select(
+                select_slice(pin!(futures.as_mut_slice())),
+                delay_ms(ENTER_SLEEP_DEBOUNCE),
+            )
+            .await
+            {
+                Either::First(_) => {
+                    // key has been pressed, but first set all rows to low
+                    for row in self.rows.iter_mut() {
+                        row.set_low();
+                    }
+                }
+                Either::Second(()) => {
+                    // enter sleep
+                    // TODO:
+                }
+            }
+        }
+    }
+
+    /// Main function for scanning and registering keys
+    pub async fn scan(&mut self) {
+        let matrix_keys_sender = MATRIX_KEYS_LOCAL
+            .publisher()
+            .expect("Failed to create publisher");
+
+        loop {
             // run matrix scan
             for (row_count, row) in self.rows.iter_mut().enumerate() {
                 row.set_high();
@@ -165,26 +165,26 @@ impl<'a> Matrix<'a> {
 
                         // add the new key position only if it is not contained
                         if !self
-                            .reg_keys
+                            .keys
                             .iter()
                             .any(|c_key| c_key.keypos == new_m_key.keypos)
                         {
                             // add it to a free slot
                             if let Some(index) = self
-                                .reg_keys
+                                .keys
                                 .iter()
                                 .position(|&key_pos| key_pos.keypos == KeyPos::default())
                             {
-                                self.reg_keys[index] = new_m_key;
+                                self.keys[index] = new_m_key;
                             };
                         }
                         // update its time
                         else if let Some(index) = self
-                            .reg_keys
+                            .keys
                             .iter()
                             .position(|c_key| c_key.keypos == new_m_key.keypos)
                         {
-                            self.reg_keys[index].time = Instant::now();
+                            self.keys[index].time = Instant::now();
                         }
                     }
                 }
@@ -199,21 +199,23 @@ impl<'a> Matrix<'a> {
             // debouncer
             self.debouncer().await;
 
-            // filter all non defalut KeyPos elements
-            for (index, c_key) in self.reg_keys.iter().enumerate() {
+            // Copy the keys that should be sent to key_provision
+            for (index, c_key) in self.keys.iter().enumerate() {
                 self.keys_to_send_new[index] = c_key.keypos;
             }
 
-            // send the new value
+            // send the new keys
             if self.keys_to_send_new != self.keys_to_send_old {
                 #[cfg(feature = "defmt")]
                 info!("[matrix] sent keys: {:?}", self.keys_to_send_new);
 
                 // send the keys
-                matrix_keys_sender.send(self.keys_to_send_new);
+                matrix_keys_sender.publish(self.keys_to_send_new).await;
 
                 self.keys_to_send_old = self.keys_to_send_new;
             }
+
+            self.enter_async_interrupt().await;
         }
     }
 }
