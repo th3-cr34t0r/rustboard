@@ -8,6 +8,7 @@ use embassy_nrf::{
     Peri,
     peripherals::{P0_04, SAADC},
 };
+use embassy_sync::pubsub::WaitResult;
 use embassy_time::Duration;
 use embedded_storage_async::nor_flash::NorFlash;
 use nrf_sdc::{Error, SoftdeviceController};
@@ -251,27 +252,30 @@ async fn split_keyboard_task<'a>(
     info!("[ble_split_keyboard_task] running split_keyboard_task");
 
     let mut message_to_peri = MESSAGE_TO_PERI
-        .receiver()
+        .subscriber()
         .expect(" [ble_peripheral] maximum number of receivers has been reached");
 
     loop {
         // wait till new key_report is received from key_provision
-        let message: [u8; 6] = message_to_peri.changed().await;
-
-        // write to characteristic
-        match client
-            .write_characteristic_without_response(&characteristic, &message)
-            .await
-        {
-            Ok(_) => {
-                #[cfg(feature = "defmt")]
-                info!("[ble_split_keyboard_task] sent:{:?}", message);
-            }
-            Err(_e) => {
-                #[cfg(feature = "defmt")]
-                info!("[ble_split_keyboard_task] notify error: {}", _e);
-                break;
-            }
-        };
+        if let WaitResult::Message(message) = message_to_peri.next_message().await {
+            // write to characteristic
+            match client
+                .write_characteristic_without_response(&characteristic, &message)
+                .await
+            {
+                Ok(_) => {
+                    #[cfg(feature = "defmt")]
+                    info!("[ble_split_keyboard_task] sent:{:?}", message);
+                }
+                Err(_e) => {
+                    #[cfg(feature = "defmt")]
+                    info!("[ble_split_keyboard_task] notify error: {}", _e);
+                    break;
+                }
+            };
+        } else {
+            #[cfg(feature = "defmt")]
+            error!("[key_provision] pubsub channel lagged");
+        }
     }
 }

@@ -7,6 +7,7 @@ use embassy_nrf::{
     Peri,
     peripherals::{P0_04, SAADC},
 };
+use embassy_sync::pubsub::WaitResult;
 use embassy_time::Duration;
 use embedded_storage_async::nor_flash::NorFlash;
 use nrf_sdc::Error;
@@ -286,7 +287,9 @@ async fn gatt_split_events_handler<'stack, 'server>(
     let split_service_registered_keys = server.split_service.registered_keys;
     let split_service_battery_level = server.split_service.level;
 
-    let matrix_keys_split_sender = MATRIX_KEYS_SPLIT.sender();
+    let matrix_keys_split_sender = MATRIX_KEYS_SPLIT
+        .publisher()
+        .expect("Failed to create publisher");
     let mut matrix_keys_split_local = [KeyPos::default(); MATRIX_KEYS_BUFFER];
     let battery_level_sender = BATTERY_LEVEL.sender();
 
@@ -326,7 +329,9 @@ async fn gatt_split_events_handler<'stack, 'server>(
                                 }
                             }
                             // send the new matrix_keys
-                            matrix_keys_split_sender.send(matrix_keys_split_local);
+                            matrix_keys_split_sender
+                                .publish(matrix_keys_split_local)
+                                .await;
 
                             #[cfg(feature = "defmt")]
                             info!(
@@ -570,26 +575,28 @@ async fn hid_kb_service_task<'stack, 'server>(
 ) {
     let mut buff = [0u8; 8];
 
-    let mut key_report = KEY_REPORT
-        .receiver()
-        .expect(" [ble_peripheral] maximum number of receivers has been reached");
+    let mut key_report = KEY_REPORT.subscriber().expect("Error creating subscriber");
 
     loop {
         // wait till new key_report is received from key_provision
-        let key_report = key_report.changed().await;
 
-        let _n = serialize(&mut buff, &key_report).unwrap();
+        if let WaitResult::Message(key_report) = key_report.next_message().await {
+            let _n = serialize(&mut buff, &key_report).unwrap();
 
-        match server.hid_service.report.notify(conn, &buff).await {
-            Ok(_) => {
-                #[cfg(feature = "defmt")]
-                info!("[notify] input keyboard notified successfully")
+            match server.hid_service.report.notify(conn, &buff).await {
+                Ok(_) => {
+                    #[cfg(feature = "defmt")]
+                    info!("[notify] input keyboard notified successfully")
+                }
+                Err(_e) => {
+                    #[cfg(feature = "defmt")]
+                    info!("[notify] input keyboard error: {}", _e);
+                    break;
+                }
             }
-            Err(_e) => {
-                #[cfg(feature = "defmt")]
-                info!("[notify] input keyboard error: {}", _e);
-                break;
-            }
+        } else {
+            #[cfg(feature = "defmt")]
+            error!("[notify] pubsub channel lagged");
         }
     }
 }
