@@ -11,27 +11,41 @@ pub mod peripherals;
 pub mod storage;
 
 use crate::{config::MATRIX_KEYS_BUFFER, matrix::KeyPos};
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, watch::Watch};
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, pubsub::PubSubChannel, watch::Watch,
+};
 
 /// Shared variable between matrix scan and key provision tasks
-pub static MATRIX_KEYS_LOCAL: Watch<CriticalSectionRawMutex, [KeyPos; MATRIX_KEYS_BUFFER], 2> =
-    Watch::new();
+pub static MATRIX_KEYS_LOCAL: PubSubChannel<
+    CriticalSectionRawMutex,
+    [KeyPos; MATRIX_KEYS_BUFFER],
+    2,
+    1,
+    1,
+> = PubSubChannel::new();
 
 #[cfg(feature = "peripheral")]
 use usbd_hid::descriptor::KeyboardReport;
 
 #[cfg(feature = "peripheral")]
-/// Shared variable between ble and key provision tasks
-pub static KEY_REPORT: Watch<CriticalSectionRawMutex, KeyboardReport, 2> = Watch::new();
+/// Shared variable between key provision tasks and ble
+pub static KEY_REPORT: PubSubChannel<CriticalSectionRawMutex, KeyboardReport, 2, 1, 1> =
+    PubSubChannel::new();
 
 #[cfg(feature = "peripheral")]
 /// Shared variable between matrix scan and key provision tasks
-pub static MATRIX_KEYS_SPLIT: Watch<CriticalSectionRawMutex, [KeyPos; MATRIX_KEYS_BUFFER], 2> =
-    Watch::new();
+pub static MATRIX_KEYS_SPLIT: PubSubChannel<
+    CriticalSectionRawMutex,
+    [KeyPos; MATRIX_KEYS_BUFFER],
+    2,
+    1,
+    1,
+> = PubSubChannel::new();
 
 #[cfg(feature = "central")]
 /// Shared variable between ble and key provision tasks
-pub static MESSAGE_TO_PERI: Watch<CriticalSectionRawMutex, [u8; 6], 2> = Watch::new();
+pub static MESSAGE_TO_PERI: PubSubChannel<CriticalSectionRawMutex, [u8; 6], 2, 1, 1> =
+    PubSubChannel::new();
 
 /// Shared variable for battery percentage information
 pub static BATTERY_LEVEL: Watch<CriticalSectionRawMutex, u8, 3> = Watch::new();
