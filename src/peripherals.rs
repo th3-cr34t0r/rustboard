@@ -77,30 +77,62 @@ impl<'a> AppPeri<'a> {
             saadc: p.SAADC,
         };
 
-        // init rows
-        let rows = [
-            Output::new(p.P0_17, Level::Low, OutputDrive::Standard),
-            Output::new(p.P0_20, Level::Low, OutputDrive::Standard),
-            Output::new(p.P0_22, Level::Low, OutputDrive::Standard),
-            Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
-        ];
+        #[cfg(not(feature = "col2row"))]
+        {
+            // init rows
+            let rows = [
+                Output::new(p.P0_17, Level::Low, OutputDrive::Standard),
+                Output::new(p.P0_20, Level::Low, OutputDrive::Standard),
+                Output::new(p.P0_22, Level::Low, OutputDrive::Standard),
+                Output::new(p.P0_24, Level::Low, OutputDrive::Standard),
+            ];
 
-        // init cols
-        let cols = [
-            Input::new(p.P0_31, Pull::Down),
-            Input::new(p.P0_29, Pull::Down),
-            Input::new(p.P0_02, Pull::Down),
-            Input::new(p.P1_15, Pull::Down),
-            Input::new(p.P1_13, Pull::Down),
-            // Input::new(p.P1_11, Pull::Down),
-        ];
+            // init cols
+            let cols = [
+                Input::new(p.P0_31, Pull::Down),
+                Input::new(p.P0_29, Pull::Down),
+                Input::new(p.P0_02, Pull::Down),
+                Input::new(p.P1_15, Pull::Down),
+                Input::new(p.P1_13, Pull::Down),
+                // Input::new(p.P1_11, Pull::Down),
+            ];
 
-        // init matrix
-        let matrix_peri = Matrix::init(rows, cols);
+            // init matrix
+            let matrix_peri = Matrix::init(rows, cols);
 
-        Self {
-            ble_peri,
-            matrix_peri,
+            Self {
+                ble_peri,
+                matrix_peri,
+            }
+        }
+
+        #[cfg(feature = "col2row")]
+        {
+            // init cols
+            let cols = [
+                Output::new(p.P0_31, Level::Low, OutputDrive::Standard),
+                Output::new(p.P0_29, Level::Low, OutputDrive::Standard),
+                Output::new(p.P0_02, Level::Low, OutputDrive::Standard),
+                Output::new(p.P1_15, Level::Low, OutputDrive::Standard),
+                Output::new(p.P1_13, Level::Low, OutputDrive::Standard),
+                // Input::new(p.P1_11, Pull::Down),
+            ];
+
+            // init rows
+            let rows = [
+                Input::new(p.P0_17, Pull::Down),
+                Input::new(p.P0_20, Pull::Down),
+                Input::new(p.P0_22, Pull::Down),
+                Input::new(p.P0_24, Pull::Down),
+            ];
+
+            // init matrix
+            let matrix_peri = Matrix::init(rows, cols);
+
+            Self {
+                ble_peri,
+                matrix_peri,
+            }
         }
     }
 }

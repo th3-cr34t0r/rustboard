@@ -2,7 +2,7 @@ use crate::keycodes::KC;
 use embassy_time::Duration;
 
 /// Name your keyboard
-pub const BLE_NAME: &str = "Rustboard";
+pub const BLE_NAME: &str = "Rustboard_BC";
 
 /// Rows per half
 pub const ROWS: usize = 4;
@@ -17,7 +17,8 @@ pub const LAYERS: usize = 2;
 pub const SPLIT_PERIPHERAL: bool = true;
 
 /// Peripheral address for connecting central to peripheral
-pub const PERI_ADDRESS: [u8; 6] = [0x0c, 0x4d, 0x2e, 0xb4, 0x1d, 0xfb]; // CREAMY PURPLE
+// pub const PERI_ADDRESS: [u8; 6] = [0x0c, 0x4d, 0x2e, 0xb4, 0x1d, 0xfb]; // CREAMY PURPLE
+pub const PERI_ADDRESS: [u8; 6] = [0x83, 0x3e, 0x89, 0x27, 0xe7, 0xf2]; // PCB
 
 //*****************************************************************************************
 // LAYER 0:

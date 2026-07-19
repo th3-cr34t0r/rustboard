@@ -19,6 +19,8 @@ defmt = [
     "nrf-sdc/defmt",
     "nrf-sdc/defmt",
 ]
+row2col = []
+col2row = []
 
 [dependencies]
 embassy-executor = { version = "0.9.0", features = ["arch-cortex-m", "executor-thread", "executor-interrupt" ] }
