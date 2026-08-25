@@ -3,6 +3,7 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_nrf::mode::Async;
 
+use core::ops::Range;
 use embassy_nrf::pac::FICR;
 use embassy_nrf::peripherals::RNG;
 use embassy_nrf::saadc;
@@ -33,6 +34,19 @@ mod central;
 #[cfg(feature = "peripheral")]
 mod peripheral;
 mod services;
+
+extern "C" {
+    static __storage_start: u8;
+    static __storage_end: u8;
+}
+
+fn storage_range() -> Range<u32> {
+    unsafe {
+        let start = &__storage_start as *const u8 as u32;
+        let end = &__storage_end as *const u8 as u32;
+        start..end
+    }
+}
 
 bind_interrupts!(pub struct Irqs {
     RNG => rng::InterruptHandler<RNG>;
@@ -154,32 +168,29 @@ pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
             .expect("[ble] Error initializing MPSL"),
         )
     };
-
-    // Use internal Flash as storage
-    let mut storage = Flash::take(mpsl, ble_peri.nvmc);
-
-    let mut sdc_rng = {
-        static SDC_RNG: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
-        SDC_RNG.init(rng::Rng::new(ble_peri.rng, Irqs))
-    };
+    // run the mpsl task
+    spawner.spawn(mpsl_task(mpsl).unwrap());
 
     let sdc_mem = {
         static SDC_MEM: StaticCell<sdc::Mem<SDC_MEMORY_SIZE>> = StaticCell::new();
         SDC_MEM.init(sdc_mem)
     };
 
-    let mut rng = ChaCha12Rng::from_rng(&mut sdc_rng).unwrap();
+    let mut sdc_rng = {
+        static SDC_RNG: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
+        SDC_RNG.init(rng::Rng::new(ble_peri.rng, Irqs))
+    };
 
     let sdc = build_sdc(sdc_p, sdc_rng, mpsl, sdc_mem).expect("[ble] Error building SDC");
 
-    // run the mpsl task
-    spawner.spawn(mpsl_task(mpsl).unwrap());
+    // Use internal Flash as storage
+    let mut flash = Flash::take(mpsl, ble_peri.nvmc);
 
     #[cfg(feature = "central")]
     crate::ble::central::ble_central_run(
         sdc,
-        &mut storage,
-        &mut rng,
+        &mut flash,
+        storage_range(),
         ble_peri.p_04,
         ble_peri.saadc,
     )
@@ -187,8 +198,8 @@ pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
     #[cfg(feature = "peripheral")]
     crate::ble::peripheral::ble_peripheral_run(
         sdc,
-        &mut storage,
-        &mut rng,
+        &mut flash,
+        storage_range(),
         ble_peri.p_04,
         ble_peri.saadc,
     )

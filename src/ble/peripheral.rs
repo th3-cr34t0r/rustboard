@@ -1,3 +1,5 @@
+use core::ops::Range;
+
 #[cfg(feature = "defmt")]
 use defmt::{error, info, warn};
 use embassy_futures::join::join;
@@ -12,7 +14,9 @@ use embassy_time::Duration;
 use embedded_storage_async::nor_flash::NorFlash;
 use nrf_sdc::Error;
 use nrf_sdc::SoftdeviceController;
-use rand::{CryptoRng, RngCore};
+use sequential_storage::cache::NoCache;
+use sequential_storage::map::{MapConfig, MapStorage, PostcardValue};
+use serde::{Deserialize, Serialize};
 use static_cell::StaticCell;
 use trouble_host::gap::{GapConfig, PeripheralConfig};
 use trouble_host::gatt::{GattConnection, GattConnectionEvent, GattEvent};
@@ -23,8 +27,8 @@ use trouble_host::prelude::{
 };
 use trouble_host::prelude::{AdvertisementParameters, TxPower};
 use trouble_host::prelude::{PhyKind, RequestedConnParams};
-use trouble_host::{Address, BleHostError, Host, Stack};
-use trouble_host::{HostResources, IoCapabilities};
+use trouble_host::{Address, BleHostError, Controller, Stack};
+use trouble_host::{BondInformation, HostResources};
 
 use crate::battery::Battery;
 use crate::ble::ble_task;
@@ -32,7 +36,6 @@ use crate::ble::get_device_address;
 use crate::ble::services::SPLIT_SERVICE;
 use crate::config::{BLE_NAME, COLS, MATRIX_KEYS_BUFFER, SPLIT_PERIPHERAL};
 use crate::matrix::KeyPos;
-use crate::storage::{load_bonding_info, store_bonding_info};
 use crate::{BATTERY_LEVEL, MATRIX_KEYS_SPLIT};
 
 use ssmarshal::{self, serialize};
@@ -46,16 +49,20 @@ const L2CAP_CHANNELS_MAX: usize = CONNECTIONS_MAX * 4;
 
 type BleHostResources = HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX>;
 
+#[derive(Serialize, Deserialize)]
+struct StoredBondInformation(BondInformation);
+impl<'a> PostcardValue<'a> for StoredBondInformation {}
+
 /// run ble
-pub async fn ble_peripheral_run<RNG, S>(
+pub async fn ble_peripheral_run<C, S>(
     sdc: SoftdeviceController<'static>,
     // mpsl: &'static MultiprotocolServiceLayer<'static>,
     mut storage: &mut S,
-    rng: &mut RNG,
+    storage_range: Range<u32>,
     p_04: Peri<'static, P0_04>,
     saadc: Peri<'static, SAADC>,
 ) where
-    RNG: RngCore + CryptoRng,
+    C: Controller,
     S: NorFlash,
 {
     // ble address
@@ -74,13 +81,17 @@ pub async fn ble_peripheral_run<RNG, S>(
         STACK.init(
             trouble_host::new(sdc, resources)
                 .set_random_address(address)
-                .set_random_generator_seed(rng),
+                .build(),
         )
     };
-    stack.set_io_capabilities(IoCapabilities::NoInputNoOutput);
 
+    let mut map_storage =
+        MapStorage::<(), _, _>::new(storage, MapConfig::new(storage_range), NoCache::new());
+    let mut data_buffer = [0; 64];
     // get the bond information
-    let mut bond_stored = if let Some(bond_info) = load_bonding_info(storage).await {
+    let mut bond_stored = if let Some(StoredBondInformation(bond_info)) =
+        map_storage.fetch_item(&mut data_buffer, &()).await.unwrap()
+    {
         stack.add_bond_information(bond_info).unwrap();
         #[cfg(feature = "defmt")]
         info!("[ble] loaded bond information");
@@ -91,11 +102,8 @@ pub async fn ble_peripheral_run<RNG, S>(
         false
     };
 
-    let Host {
-        mut peripheral,
-        runner,
-        ..
-    } = stack.build();
+    let runner = stack.runner();
+    let mut peripheral = stack.peripheral();
 
     // create the server
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
@@ -138,7 +146,8 @@ pub async fn ble_peripheral_run<RNG, S>(
                                             gatt_hid_events_handler(
                                                 &conn_2,
                                                 &server,
-                                                &mut storage,
+                                                &mut map_storage,
+                                                &mut data_buffer,
                                                 &mut bond_stored,
                                             ),
                                             battery_service_task(&conn_2, &server),
@@ -187,7 +196,7 @@ async fn advertise_split<'a, 'b>(
     AdStructure::encode_slice(
         &[
             AdStructure::Flags(BR_EDR_NOT_SUPPORTED),
-            AdStructure::ServiceUuids16(&[SPLIT_SERVICE.to_le_bytes()]),
+            AdStructure::IncompleteServiceUuids16(&[SPLIT_SERVICE.to_le_bytes()]),
         ],
         &mut advertiser_data[..],
     )?;
@@ -234,7 +243,7 @@ async fn advertise_hid<'a, 'b>(
     AdStructure::encode_slice(
         &[
             AdStructure::Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED),
-            AdStructure::ServiceUuids16(&[
+            AdStructure::IncompleteServiceUuids16(&[
                 BATTERY.to_le_bytes(),
                 HUMAN_INTERFACE_DEVICE.to_le_bytes(),
             ]),
@@ -315,19 +324,20 @@ async fn gatt_split_events_handler<'stack, 'server>(
                     GattEvent::Write(event) => {
                         if event.handle() == split_service_registered_keys.handle {
                             // central message to peripheral
-                            let central_data = event.data();
+                            let central_data = event.with_data(|offset, data| {
+                                // store the central keys in matrix keys
+                                for (index, combined_key) in data.iter().enumerate() {
+                                    if *combined_key != 255u8 {
+                                        let col = (combined_key & 0x0f) + COLS as u8;
+                                        let row = combined_key >> 4;
 
-                            // store the central keys in matrix keys
-                            for (index, combined_key) in central_data.iter().enumerate() {
-                                if *combined_key != 255u8 {
-                                    let col = (combined_key & 0x0f) + COLS as u8;
-                                    let row = combined_key >> 4;
-
-                                    matrix_keys_split_local[index] = KeyPos { row, col };
-                                } else {
-                                    matrix_keys_split_local[index] = KeyPos::default();
+                                        matrix_keys_split_local[index] = KeyPos { row, col };
+                                    } else {
+                                        matrix_keys_split_local[index] = KeyPos::default();
+                                    }
                                 }
-                            }
+                            });
+
                             // send the new matrix_keys
                             matrix_keys_split_sender
                                 .publish(matrix_keys_split_local)
@@ -342,9 +352,8 @@ async fn gatt_split_events_handler<'stack, 'server>(
 
                         // split battery level information
                         if event.handle() == split_service_battery_level.handle {
-                            let split_battery_level = event.data();
-
-                            for split_b_level in split_battery_level {
+                            let split_battery_level = event.with_data(|offset, data| {
+                            for split_b_level in data {
                                 if let Some(b_level) = battery_level_sender.try_get() {
                                     // send only the lower value (either peripheral or central battery level)
                                     if *split_b_level < b_level {
@@ -358,6 +367,9 @@ async fn gatt_split_events_handler<'stack, 'server>(
                                     );
                                 }
                             }
+                                
+                            });
+
                             #[cfg(feature = "defmt")]
                             info!("[split_battery_level] central bat lvl rcvd",);
                         }
@@ -393,7 +405,8 @@ async fn gatt_split_events_handler<'stack, 'server>(
 async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
     conn: &GattConnection<'stack, 'server, DefaultPacketPool>,
     server: &'server Server<'_>,
-    storage: &mut S,
+    map_storage: &mut MapStorage<(), S, NoCache>,
+    data_buffer: &mut [u8],
     bond_stored: &mut bool,
 ) -> Result<(), Error> {
     let hid_service_report_map = server.hid_service.report_map;
@@ -413,7 +426,8 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                 info!("[gatt] ***** bond information: {} *****", bond);
 
                 if let Some(bond_info) = bond {
-                    store_bonding_info(storage, &bond_info)
+                    map_storage
+                        .store_item(data_buffer, &(), &StoredBondInformation(bond_info))
                         .await
                         .expect("[gatt] error storing bond info");
                     *bond_stored = true;
@@ -440,17 +454,21 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                     }
                     GattEvent::Write(event) => {
                         if event.handle() == hid_service_report_map.handle {
+                                event.with_data(|offset, data| {
                             #[cfg(feature = "defmt")]
                             info!(
-                                "[gatt] Write Event to HID Characteristic {:?}",
-                                event.data()
+                                "[gatt] Write Event to HID Characteristic {:?}", data
                             );
+                                    
+                                });
                         } else if event.handle() == battery_service_level.handle {
+                                event.with_data(|offset, data| {
                             #[cfg(feature = "defmt")]
                             info!(
-                                "[gatt] Write Event to Level Characteristic {:?}",
-                                event.data()
+                                "[gatt] Write Event to Level Characteristic {:?}", data
                             );
+                                    
+                                });
                         }
                     }
                     GattEvent::NotAllowed(_event) => {
