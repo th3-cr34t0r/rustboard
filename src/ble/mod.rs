@@ -3,7 +3,9 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_nrf::mode::Async;
 
+#[cfg(feature = "peripheral")]
 use core::ops::Range;
+
 use embassy_nrf::pac::FICR;
 use embassy_nrf::peripherals::RNG;
 use embassy_nrf::saadc;
@@ -21,11 +23,9 @@ use nrf_sdc::{
         raw::mpsl_clock_lfclk_cfg_t,
     },
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha12Rng;
 use static_cell::StaticCell;
-use trouble_host::Address;
-use trouble_host::prelude::{DefaultPacketPool, Runner};
+use trouble_host::prelude::Runner;
+use trouble_host::{Address, Controller, PacketPool};
 
 use crate::peripherals::BlePeri;
 
@@ -35,11 +35,12 @@ mod central;
 mod peripheral;
 mod services;
 
-extern "C" {
+unsafe extern "C" {
     static __storage_start: u8;
     static __storage_end: u8;
 }
 
+#[cfg(feature = "peripheral")]
 fn storage_range() -> Range<u32> {
     unsafe {
         let start = &__storage_start as *const u8 as u32;
@@ -70,10 +71,10 @@ const L2CAP_MTU: usize = 251;
 
 #[cfg(feature = "central")]
 /// Default memory allocation for softdevice controller in bytes.
-const SDC_MEMORY_SIZE: usize = 2816; // bytes
+const SDC_MEMORY_SIZE: usize = 2900; // bytes
 #[cfg(feature = "peripheral")]
 /// Default memory allocation for softdevice controller in bytes.
-const SDC_MEMORY_SIZE: usize = 5064; // bytes
+const SDC_MEMORY_SIZE: usize = 5152; // bytes
 
 #[embassy_executor::task]
 async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
@@ -81,9 +82,7 @@ async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
 }
 
 /// Background ble task
-pub async fn ble_task(
-    mut runner: Runner<'static, SoftdeviceController<'static>, DefaultPacketPool>,
-) {
+pub async fn ble_task<C: Controller, P: PacketPool>(mut runner: Runner<'_, C, P>) {
     #[cfg(feature = "defmt")]
     info!("[ble_task] running runner");
     loop {
@@ -108,25 +107,24 @@ fn build_sdc<'a, const N: usize>(
     mpsl: &'a MultiprotocolServiceLayer,
     mem: &'a mut sdc::Mem<N>,
 ) -> Result<SoftdeviceController<'a>, nrf_sdc::Error> {
-    if cfg!(feature = "central") {
-        sdc::Builder::new()?
-            .support_scan()
-            .support_central()
-            .support_le_2m_phy()
-            .support_phy_update_central()
-            .central_count(1)?
-            .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
-            .build(p, rng, mpsl, mem)
-    } else {
-        sdc::Builder::new()?
-            .support_adv()
-            .support_peripheral()
-            .support_le_2m_phy()
-            .support_phy_update_peripheral()
-            .peripheral_count(2)?
-            .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
-            .build(p, rng, mpsl, mem)
-    }
+    #[cfg(not(feature = "peripheral"))]
+    return sdc::Builder::new()?
+        .support_scan()
+        .support_central()
+        .support_le_2m_phy()
+        .support_phy_update_central()
+        .central_count(1)?
+        .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
+        .build(p, rng, mpsl, mem);
+    #[cfg(feature = "peripheral")]
+    return sdc::Builder::new()?
+        .support_adv()
+        .support_peripheral()
+        .support_le_2m_phy()
+        .support_phy_update_peripheral()
+        .peripheral_count(2)?
+        .buffer_cfg(L2CAP_MTU as u16, L2CAP_MTU as u16, L2CAP_TXQ, L2CAP_RXQ)?
+        .build(p, rng, mpsl, mem);
 }
 pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
     let sdc_p = sdc_Peripherals::new(
@@ -176,7 +174,7 @@ pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
         SDC_MEM.init(sdc_mem)
     };
 
-    let mut sdc_rng = {
+    let sdc_rng = {
         static SDC_RNG: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
         SDC_RNG.init(rng::Rng::new(ble_peri.rng, Irqs))
     };
@@ -186,15 +184,8 @@ pub async fn ble_init_run(ble_peri: BlePeri, spawner: Spawner) {
     // Use internal Flash as storage
     let mut flash = Flash::take(mpsl, ble_peri.nvmc);
 
-    #[cfg(feature = "central")]
-    crate::ble::central::ble_central_run(
-        sdc,
-        &mut flash,
-        storage_range(),
-        ble_peri.p_04,
-        ble_peri.saadc,
-    )
-    .await;
+    #[cfg(not(feature = "peripheral"))]
+    crate::ble::central::ble_central_run(sdc, &mut flash, ble_peri.p_04, ble_peri.saadc).await;
     #[cfg(feature = "peripheral")]
     crate::ble::peripheral::ble_peripheral_run(
         sdc,

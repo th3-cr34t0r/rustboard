@@ -5,8 +5,8 @@ edition = "2024"
 
 [features]
 default = []
-central = ["trouble-host/scan", "nrf-sdc/central"]
-peripheral = ["nrf-sdc/peripheral"]
+central = ["trouble-host/central", "nrf-sdc/central"]
+peripheral = ["trouble-host/peripheral", "trouble-host/security","nrf-sdc/peripheral"]
 defmt = [
     "dep:defmt",
     "embassy-executor/defmt",
@@ -23,16 +23,16 @@ defmt = [
 [dependencies]
 embassy-executor = { version = "0.10", default-features = false, features = ["platform-cortex-m", "executor-thread", "executor-interrupt" ] }
 embassy-time = { version = "0.5.0", default-features = false }
-embassy-nrf = { version = "0.11", default-features = false, features = ["time-driver-rtc1", "gpiote", "unstable-pac", "time","nfc-pins-as-gpio", "nrf52840" ] }
+embassy-nrf = { version = "0.11", default-features = false, features = ["time-driver-rtc1", "gpiote", "unstable-pac", "time","nfc-pins-as-gpio", "nrf52840"] }
 embassy-sync = "0.8"
 embassy-futures = "0.1.1"
 
-nrf-mpsl = { version = "0.3.0", features = ["critical-section-impl"] }
-nrf-sdc = { version = "0.4.0", features = ["nrf52840"] }
-trouble-host = { version = "0.8.0", features = ["default", "security"] }
+nrf-mpsl = { version = "0.3.0", default-features = false,features = ["critical-section-impl"] }
+nrf-sdc = { version = "0.4.0", default-features = false,features = ["nrf52840"] }
+trouble-host = { version = "0.8.0", default-features = false, features = ["derive","gatt", "serde", "default-packet-pool-size-32"] }
 
 embedded-storage-async = { version = "0.4.1"}
-sequential-storage = { version = "7.1.0", optional = true, features = ["postcard"] }
+sequential-storage = { version = "7.1.0", features = ["postcard"] }
 
 defmt = { version = "1.0", optional = true }
 defmt-rtt = "1.0"
@@ -47,9 +47,10 @@ rand_chacha = { version = "0.3", default-features = false }
 panic-probe = { version = "0.3.2" }
 usbd-hid = "0.8.2"
 static_cell = "2.1.1"
-serde = { version = "1.0.219", default-features = false, features = ["derive"] }
+serde = { version = "1.0.228", default-features = false, features = ["derive"]}
 ssmarshal = {version = "1.0.0", default-features = false}
 heapless = "0.9.1"
+bt-hci = {version = "0.10.1", default-features = false, features = ["serde"]}
 
 [profile.release]
 opt-level = "z"       # Size optimization

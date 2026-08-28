@@ -11,11 +11,10 @@ use embassy_nrf::{
 use embassy_sync::pubsub::WaitResult;
 use embassy_time::Duration;
 use embedded_storage_async::nor_flash::NorFlash;
-use nrf_sdc::{Error, SoftdeviceController};
-use rand::{CryptoRng, RngCore};
+use nrf_sdc::Error;
 use static_cell::StaticCell;
 use trouble_host::{
-    Address, Host, HostResources, Stack,
+    Address, Controller, HostResources, Stack,
     gatt::GattClient,
     prelude::{
         Central, Characteristic, ConnectConfig, Connection, ConnectionEvent, DefaultPacketPool,
@@ -38,14 +37,13 @@ const L2CAP_CHANNELS_MAX: usize = CONNECTIONS_MAX * 4;
 type BleHostResources = HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX>;
 
 /// run ble
-pub async fn ble_central_run<RNG, S>(
-    sdc: SoftdeviceController<'static>,
-    mut _storage: &mut S,
-    rng: &mut RNG,
+pub async fn ble_central_run<C, S>(
+    sdc: C,
+    _storage: &mut S,
     p_04: Peri<'static, P0_04>,
     saadc: Peri<'static, SAADC>,
 ) where
-    RNG: RngCore + CryptoRng,
+    C: Controller,
     S: NorFlash,
 {
     let address = get_device_address();
@@ -55,21 +53,12 @@ pub async fn ble_central_run<RNG, S>(
         RESOURCES.init(BleHostResources::new())
     };
 
-    let stack = {
-        static STACK: StaticCell<Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>> =
-            StaticCell::new();
-        STACK.init(
-            trouble_host::new(sdc, resources)
-                .set_random_address(address)
-                .set_random_generator_seed(rng),
-        )
-    };
+    let stack = trouble_host::new(sdc, resources)
+        .set_random_address(address)
+        .build();
 
-    let Host {
-        mut central,
-        runner,
-        ..
-    } = stack.build();
+    let runner = stack.runner();
+    let mut central = stack.central();
 
     let mut battery_level_sense = Battery::new(p_04, saadc);
 
@@ -81,23 +70,16 @@ pub async fn ble_central_run<RNG, S>(
             info!("[ble_connect] connected to peripheral");
 
             // gatt tasks
-            connection_events_handler(&conn, stack).await;
+            connection_events_handler(&conn, &stack).await;
 
             // create client
-            let client = {
-                static CLIENT: StaticCell<
-                    GattClient<'_, SoftdeviceController<'_>, DefaultPacketPool, 10>,
-                > = StaticCell::new();
-                CLIENT.init(
-                    GattClient::<SoftdeviceController, DefaultPacketPool, 10>::new(stack, &conn)
-                        .await
-                        .expect("[ble_central] error creating client"),
-                )
-            };
+            let client = GattClient::<C, DefaultPacketPool, 10>::new(&stack, &conn)
+                .await
+                .expect("[ble_central] error creating client");
 
             let _ = select3(
                 client.task(),
-                kb_tasks(client),
+                kb_tasks(&client),
                 battery_level_sense.approximate(),
             )
             .await;
@@ -109,26 +91,12 @@ pub async fn ble_central_run<RNG, S>(
     .await;
 }
 
-async fn connection_events_handler<'stack, 'server, 'a>(
+async fn connection_events_handler<'stack, 'server, 'a, C: Controller>(
     conn: &Connection<'a, DefaultPacketPool>,
-    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
+    stack: &Stack<'_, C, DefaultPacketPool>,
 ) {
-    conn.request_security().unwrap();
     loop {
         match conn.next().await {
-            ConnectionEvent::PairingComplete {
-                security_level: _sec_lvl,
-                bond: _bond,
-            } => {
-                #[cfg(feature = "defmt")]
-                info!("[gatt] pairing complete: {:?}", _sec_lvl);
-                break;
-            }
-            ConnectionEvent::PairingFailed(_err) => {
-                #[cfg(feature = "defmt")]
-                error!("[gatt] pairing failed: {:?}", _err);
-                break;
-            }
             ConnectionEvent::Disconnected { reason: _rsn } => {
                 #[cfg(feature = "defmt")]
                 error!("[gatt] Disconnected: {:?}", _rsn);
@@ -142,8 +110,8 @@ async fn connection_events_handler<'stack, 'server, 'a>(
     }
 }
 
-async fn connect<'a, 'b>(
-    central: &mut Central<'a, SoftdeviceController<'b>, DefaultPacketPool>,
+async fn connect<'a, 'b, C: Controller>(
+    central: &mut Central<'a, C, DefaultPacketPool>,
 ) -> Result<Connection<'a, DefaultPacketPool>, Error> {
     // address of the target split kb
     let target = Address::random(PERI_ADDRESS);
@@ -157,19 +125,19 @@ async fn connect<'a, 'b>(
         supervision_timeout: Duration::from_secs(5),
     };
 
-    let config = ConnectConfig {
+    let connect_config = ConnectConfig {
+        connect_params: conn_params,
         scan_config: ScanConfig {
-            filter_accept_list: &[(target.kind, &target.addr)],
+            filter_accept_list: &[target],
             ..Default::default()
         },
-        connect_params: conn_params,
     };
 
     #[cfg(feature = "defmt")]
     // Connect to peripheral
     info!("[ble_connect] connecting to peripheral {}", target);
     loop {
-        match central.connect(&config).await {
+        match central.connect(&connect_config).await {
             Ok(conn) => return Ok(conn),
             Err(_e) => {
                 #[cfg(feature = "defmt")]
@@ -182,7 +150,7 @@ async fn connect<'a, 'b>(
 }
 
 /// Keyboard Tasks
-async fn kb_tasks<'a>(client: &'a GattClient<'a, SoftdeviceController<'a>, DefaultPacketPool, 10>) {
+async fn kb_tasks<'a, C: Controller>(client: &'a GattClient<'a, C, DefaultPacketPool, 10>) {
     let services = client
         .services_by_uuid(&Uuid::new_short(0xff11))
         .await
@@ -208,8 +176,8 @@ async fn kb_tasks<'a>(client: &'a GattClient<'a, SoftdeviceController<'a>, Defau
 }
 
 /// Battery service task
-async fn split_battery_task<'a>(
-    client: &'a GattClient<'a, SoftdeviceController<'a>, DefaultPacketPool, 10>,
+async fn split_battery_task<'a, C: Controller>(
+    client: &'a GattClient<'a, C, DefaultPacketPool, 10>,
     characteristic: &Characteristic<u8>,
 ) {
     #[cfg(feature = "defmt")]
@@ -244,8 +212,8 @@ async fn split_battery_task<'a>(
 }
 
 /// Split Keyboard service task
-async fn split_keyboard_task<'a>(
-    client: &'a GattClient<'a, SoftdeviceController<'a>, DefaultPacketPool, 10>,
+async fn split_keyboard_task<'a, C: Controller>(
+    client: &'a GattClient<'a, C, DefaultPacketPool, 10>,
     characteristic: &Characteristic<[u8; 6]>,
 ) {
     #[cfg(feature = "defmt")]

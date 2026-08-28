@@ -11,9 +11,8 @@ use embassy_nrf::{
 };
 use embassy_sync::pubsub::WaitResult;
 use embassy_time::Duration;
-use embedded_storage_async::nor_flash::NorFlash;
+use embedded_storage_async::nor_flash::{ NorFlash};
 use nrf_sdc::Error;
-use nrf_sdc::SoftdeviceController;
 use sequential_storage::cache::NoCache;
 use sequential_storage::map::{MapConfig, MapStorage, PostcardValue};
 use serde::{Deserialize, Serialize};
@@ -28,13 +27,15 @@ use trouble_host::prelude::{
 use trouble_host::prelude::{AdvertisementParameters, TxPower};
 use trouble_host::prelude::{PhyKind, RequestedConnParams};
 use trouble_host::{Address, BleHostError, Controller, Stack};
+use bt_hci::cmd::le::{LeReadLocalSupportedFeatures};
+use bt_hci::controller::{ ControllerCmdSync};
 use trouble_host::{BondInformation, HostResources};
 
 use crate::battery::Battery;
 use crate::ble::ble_task;
 use crate::ble::get_device_address;
 use crate::ble::services::SPLIT_SERVICE;
-use crate::config::{BLE_NAME, COLS, MATRIX_KEYS_BUFFER, SPLIT_PERIPHERAL};
+use crate::config::{BLE_NAME, COLS, MATRIX_KEYS_BUFFER,  SPLIT_PERIPHERAL};
 use crate::matrix::KeyPos;
 use crate::{BATTERY_LEVEL, MATRIX_KEYS_SPLIT};
 
@@ -55,14 +56,14 @@ impl<'a> PostcardValue<'a> for StoredBondInformation {}
 
 /// run ble
 pub async fn ble_peripheral_run<C, S>(
-    sdc: SoftdeviceController<'static>,
-    // mpsl: &'static MultiprotocolServiceLayer<'static>,
-    mut storage: &mut S,
+    sdc: C,
+    storage: &mut S,
     storage_range: Range<u32>,
     p_04: Peri<'static, P0_04>,
     saadc: Peri<'static, SAADC>,
 ) where
-    C: Controller,
+    C: Controller +
+    ControllerCmdSync<LeReadLocalSupportedFeatures>,
     S: NorFlash,
 {
     // ble address
@@ -75,15 +76,11 @@ pub async fn ble_peripheral_run<C, S>(
         static RESOURCES: StaticCell<BleHostResources> = StaticCell::new();
         RESOURCES.init(BleHostResources::new())
     };
-    let stack = {
-        static STACK: StaticCell<Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>> =
-            StaticCell::new();
-        STACK.init(
+
+    let stack = 
             trouble_host::new(sdc, resources)
                 .set_random_address(address)
-                .build(),
-        )
-    };
+                .build();
 
     let mut map_storage =
         MapStorage::<(), _, _>::new(storage, MapConfig::new(storage_range), NoCache::new());
@@ -152,7 +149,7 @@ pub async fn ble_peripheral_run<C, S>(
                                             ),
                                             battery_service_task(&conn_2, &server),
                                             hid_kb_service_task(&conn_2, &server),
-                                            set_conn_params(&conn_2, stack),
+                                            set_conn_params(&conn_2, &stack),
                                         );
 
                                         let _ =
@@ -184,10 +181,10 @@ pub async fn ble_peripheral_run<C, S>(
 }
 
 /// Advertiser task
-async fn advertise_split<'a, 'b>(
-    peripheral: &mut Peripheral<'a, SoftdeviceController<'static>, DefaultPacketPool>,
-    server: &'b Server<'_>,
-) -> Result<GattConnection<'a, 'b, DefaultPacketPool>, BleHostError<Error>> {
+async fn advertise_split<'values, 'server, C:Controller>(
+    peripheral: &mut Peripheral<'values,C, DefaultPacketPool>,
+    server: &'server Server<'values>,
+) -> Result<GattConnection<'values, 'server, DefaultPacketPool>, BleHostError<C::Error>> {
     let mut advertiser_data = [0; 31];
 
     #[cfg(feature = "defmt")]
@@ -231,10 +228,10 @@ async fn advertise_split<'a, 'b>(
 
     Ok(gatt_conn)
 }
-async fn advertise_hid<'a, 'b>(
-    peripheral: &mut Peripheral<'a, SoftdeviceController<'static>, DefaultPacketPool>,
-    server: &'b Server<'_>,
-) -> Result<GattConnection<'a, 'b, DefaultPacketPool>, BleHostError<Error>> {
+async fn advertise_hid<'values, 'server, C:Controller>(
+    peripheral: &mut Peripheral<'values,C, DefaultPacketPool>,
+    server: &'server Server<'values>,
+) -> Result<GattConnection<'values, 'server, DefaultPacketPool>, BleHostError<C::Error>> {
     let mut advertiser_data = [0; 31];
 
     #[cfg(feature = "defmt")]
@@ -324,7 +321,7 @@ async fn gatt_split_events_handler<'stack, 'server>(
                     GattEvent::Write(event) => {
                         if event.handle() == split_service_registered_keys.handle {
                             // central message to peripheral
-                            let central_data = event.with_data(|offset, data| {
+                             event.with_data(|_offset, data| {
                                 // store the central keys in matrix keys
                                 for (index, combined_key) in data.iter().enumerate() {
                                     if *combined_key != 255u8 {
@@ -352,7 +349,7 @@ async fn gatt_split_events_handler<'stack, 'server>(
 
                         // split battery level information
                         if event.handle() == split_service_battery_level.handle {
-                            let split_battery_level = event.with_data(|offset, data| {
+                            event.with_data(|_offset, data| {
                             for split_b_level in data {
                                 if let Some(b_level) = battery_level_sender.try_get() {
                                     // send only the lower value (either peripheral or central battery level)
@@ -454,18 +451,18 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
                     }
                     GattEvent::Write(event) => {
                         if event.handle() == hid_service_report_map.handle {
-                                event.with_data(|offset, data| {
+                                event.with_data(|_offset, _data| {
                             #[cfg(feature = "defmt")]
                             info!(
-                                "[gatt] Write Event to HID Characteristic {:?}", data
+                                "[gatt] Write Event to HID Characteristic {:?}", _data
                             );
                                     
                                 });
                         } else if event.handle() == battery_service_level.handle {
-                                event.with_data(|offset, data| {
+                                event.with_data(|_offset, _data| {
                             #[cfg(feature = "defmt")]
                             info!(
-                                "[gatt] Write Event to Level Characteristic {:?}", data
+                                "[gatt] Write Event to Level Characteristic {:?}", _data
                             );
                                     
                                 });
@@ -499,11 +496,15 @@ async fn gatt_hid_events_handler<'stack, 'server, S: NorFlash>(
 }
 
 /// Update connection params
-async fn update_conn_params(
+async fn update_conn_params<C>(
     conn: &GattConnection<'_, '_, DefaultPacketPool>,
-    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
+    stack: &Stack<'_,C, DefaultPacketPool>,
     params: &RequestedConnParams,
-) {
+)
+where 
+    C: Controller +
+    ControllerCmdSync<LeReadLocalSupportedFeatures>
+{
     match conn.raw().update_connection_params(&stack, params).await {
         Ok(_) => {
             #[cfg(feature = "defmt")]
@@ -517,10 +518,15 @@ async fn update_conn_params(
 }
 
 /// Connection params update handler
-async fn set_conn_params(
+async fn set_conn_params<C>(
     conn: &GattConnection<'_, '_, DefaultPacketPool>,
-    stack: &Stack<'_, SoftdeviceController<'_>, DefaultPacketPool>,
-) {
+    stack: &Stack<'_, C, DefaultPacketPool>,
+    
+)
+where 
+    C: Controller +
+    ControllerCmdSync<LeReadLocalSupportedFeatures>
+{
     delay_ms(5000).await;
 
     let params = RequestedConnParams {
@@ -567,7 +573,7 @@ async fn battery_service_task<'stack, 'server>(
         let battery_percentage = battery_percantage_receiver.changed().await;
 
         match battery_characteristic
-            .notify(conn, &battery_percentage)
+            .notify(conn, &battery_percentage, false)
             .await
         {
             Ok(_) => {
@@ -601,7 +607,7 @@ async fn hid_kb_service_task<'stack, 'server>(
         if let WaitResult::Message(key_report) = key_report.next_message().await {
             let _n = serialize(&mut buff, &key_report).unwrap();
 
-            match server.hid_service.report.notify(conn, &buff).await {
+            match server.hid_service.report.notify(conn, &buff, false).await {
                 Ok(_) => {
                     #[cfg(feature = "defmt")]
                     info!("[notify] input keyboard notified successfully")
