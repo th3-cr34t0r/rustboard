@@ -3,8 +3,6 @@ use defmt::{error, info};
 #[cfg(feature = "peripheral")]
 use embassy_futures::select::{Either, select};
 #[cfg(feature = "peripheral")]
-use heapless::Vec;
-#[cfg(feature = "peripheral")]
 use usbd_hid::descriptor::KeyboardReport;
 
 #[cfg(feature = "peripheral")]
@@ -26,6 +24,7 @@ use crate::{
 };
 use embassy_sync::pubsub::WaitResult;
 use embassy_time::{Duration, Instant};
+use heapless::Vec;
 
 enum OffsetIndex {
     No,
@@ -36,7 +35,7 @@ pub struct KeyProvision {
     #[cfg(feature = "peripheral")]
     layer: u8,
     #[cfg(feature = "peripheral")]
-    prev_layer: u8,
+    layer_stack: Vec<u8, 4>,
     #[cfg(feature = "peripheral")]
     keymap: [[[KC; KEYMAP_COLS]; ROWS]; LAYERS],
     #[cfg(feature = "peripheral")]
@@ -51,7 +50,7 @@ impl KeyProvision {
             #[cfg(feature = "peripheral")]
             layer: 0,
             #[cfg(feature = "peripheral")]
-            prev_layer: 0,
+            layer_stack: Vec::new(),
             #[cfg(feature = "peripheral")]
             keymap: provide_keymap(),
             #[cfg(feature = "peripheral")]
@@ -62,8 +61,7 @@ impl KeyProvision {
         }
     }
     #[cfg(feature = "peripheral")]
-    #[inline(always)]
-    fn provision_pressed_keys(&mut self, kc: &KC) {
+    pub fn provision_pressed_keys(&mut self, kc: &KC) {
         // get the key type
         match KeyType::check_type(kc) {
             // KeyType::Macro => {
@@ -73,9 +71,13 @@ impl KeyProvision {
             //     }
             // }
             KeyType::Layer => {
-                // check and set the layer
-                self.prev_layer = self.layer;
-                self.layer = kc.get_layer();
+                // Push current layer onto stack, then switch
+                let new_layer = kc.get_layer();
+
+                if new_layer != self.layer {
+                    let _ = self.layer_stack.push(self.layer);
+                    self.layer = new_layer;
+                }
             }
             KeyType::Modifier => {
                 self.keyreport.modifier |= kc.get_modifier();
@@ -85,25 +87,14 @@ impl KeyProvision {
             //     mouse_key_report.set_command(hid_key);
             // }
             KeyType::Key => {
-                let kc_val = *kc as u8;
-                let mut found = false;
-                let mut free_slot: Option<usize> = None;
-
                 // check if the key count is less than 6
-                for (i, &existing_key) in self.keyreport.keycodes.iter().enumerate() {
-                    if existing_key == kc_val {
-                        found = true;
-                        break;
-                    }
-                    if free_slot.is_none() && existing_key == 0 {
-                        free_slot = Some(i);
-                        break;
-                    }
-                }
-
-                if !found {
-                    if let Some(i) = free_slot {
-                        self.keyreport.keycodes[i] = kc_val;
+                if !self.keyreport.keycodes.contains(&(*kc as u8)) {
+                    // find the first key slot in the array that is free
+                    if let Some(index) =
+                        self.keyreport.keycodes.iter().position(|&value| value == 0)
+                    {
+                        // add the new key to that position
+                        self.keyreport.keycodes[index] = *kc as u8
                     }
                 }
             }
@@ -113,7 +104,6 @@ impl KeyProvision {
     }
 
     #[cfg(feature = "peripheral")]
-    #[inline(always)]
     fn provision_released_keys(&mut self, kc: &KC) {
         // get the key type
         match KeyType::check_type(kc) {
@@ -127,7 +117,7 @@ impl KeyProvision {
                 // set previous layer
                 let released_layer = kc.get_layer();
                 if self.layer == released_layer {
-                    self.layer = self.prev_layer;
+                    self.layer = self.layer_stack.pop().unwrap_or(0);
                 }
             }
             KeyType::Modifier => {
@@ -166,7 +156,7 @@ impl KeyProvision {
             OffsetIndex::Yes => MATRIX_KEYS_BUFFER,
         };
 
-        let instant_now = Instant::now();
+        let intast_now = Instant::now();
 
         for (mut index_received, key_pos_received) in matrix_keys_received.iter().enumerate() {
             index_received += offset;
@@ -192,7 +182,7 @@ impl KeyProvision {
                         code: KC::Reserved,
                         position: *key_pos_received,
                         state: KeyState::Pressed,
-                        time: instant_now,
+                        time: intast_now,
                     };
 
                     // set the new key in an empty slot
@@ -206,8 +196,8 @@ impl KeyProvision {
 
     /// Evaluate if condition is met to enter bootloader
     #[inline(always)]
-    fn evaluate_enter_bootloader(&self, key: &Key, instant_now: &Instant) {
-        if *instant_now >= key.time + Duration::from_secs(5) {
+    fn evaluate_enter_bootloader(&self, key: &Key) {
+        if Instant::now() >= key.time + Duration::from_secs(5) {
             let key_pos_enter_bl = KeyPos { row: 0, col: 0 };
             if key.position == key_pos_enter_bl || key.code == KC::BTL {
                 // write to register to boot into BL
@@ -313,8 +303,6 @@ impl KeyProvision {
                 matrix_keys_local
             );
 
-            let instant_now = Instant::now();
-
             // process the non default keys to keyreport
             for key in matrix_keys_local
                 .iter_mut()
@@ -365,7 +353,7 @@ impl KeyProvision {
                         }
 
                         // evaluate enter_bootloader
-                        self.evaluate_enter_bootloader(key, &instant_now);
+                        self.evaluate_enter_bootloader(key);
 
                         *key = Key::default();
                     }
@@ -382,6 +370,8 @@ impl KeyProvision {
                     "[key_provision] keyreport_local.keycodes: {:?}",
                     self.keyreport.keycodes
                 );
+                #[cfg(feature = "defmt")]
+                info!("[key_provision] layer: {:?}", self.layer);
             }
             #[cfg(feature = "central")]
             {

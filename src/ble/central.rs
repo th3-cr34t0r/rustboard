@@ -2,7 +2,7 @@
 use defmt::{error, info, warn};
 use embassy_futures::{
     join::join,
-    select::{select, select3},
+    select::{select, select4},
 };
 use embassy_nrf::{
     Peri,
@@ -69,15 +69,13 @@ pub async fn ble_central_run<C, S>(
             #[cfg(feature = "defmt")]
             info!("[ble_connect] connected to peripheral");
 
-            // gatt tasks
-            connection_events_handler(&conn, &stack).await;
-
             // create client
             let client = GattClient::<C, DefaultPacketPool, 10>::new(&stack, &conn)
                 .await
                 .expect("[ble_central] error creating client");
 
-            let _ = select3(
+            let _ = select4(
+                connection_events_handler(&conn, &stack),
                 client.task(),
                 kb_tasks(&client),
                 battery_level_sense.approximate(),
@@ -95,8 +93,21 @@ async fn connection_events_handler<'stack, 'server, 'a, C: Controller>(
     conn: &Connection<'a, DefaultPacketPool>,
     stack: &Stack<'_, C, DefaultPacketPool>,
 ) {
+    conn.request_security().unwrap();
     loop {
         match conn.next().await {
+            ConnectionEvent::PairingComplete {
+                security_level: _sec_lvl,
+                bond: _bond,
+            } => {
+                #[cfg(feature = "defmt")]
+                info!("[gatt] pairing complete: {:?}", _sec_lvl);
+            }
+            ConnectionEvent::PairingFailed(_err) => {
+                #[cfg(feature = "defmt")]
+                error!("[gatt] pairing failed: {:?}", _err);
+                break;
+            }
             ConnectionEvent::Disconnected { reason: _rsn } => {
                 #[cfg(feature = "defmt")]
                 error!("[gatt] Disconnected: {:?}", _rsn);
@@ -114,6 +125,8 @@ async fn connect<'a, 'b, C: Controller>(
     central: &mut Central<'a, C, DefaultPacketPool>,
 ) -> Result<Connection<'a, DefaultPacketPool>, Error> {
     // address of the target split kb
+    // C5:36:55:8B:C6:C4
+    // let addr = [0xc4, 0xc6, 0x8b, 0x55, 0x36, 0xc5];
     let target = Address::random(PERI_ADDRESS);
 
     let conn_params = RequestedConnParams {
@@ -204,7 +217,7 @@ async fn split_battery_task<'a, C: Controller>(
             }
             Err(_e) => {
                 #[cfg(feature = "defmt")]
-                info!("[notify] battery level error: {}", _e);
+                error!("[notify] battery level error: {}", _e);
                 break;
             }
         };
@@ -237,7 +250,7 @@ async fn split_keyboard_task<'a, C: Controller>(
                 }
                 Err(_e) => {
                     #[cfg(feature = "defmt")]
-                    info!("[ble_split_keyboard_task] notify error: {}", _e);
+                    error!("[ble_split_keyboard_task] notify error: {}", _e);
                     break;
                 }
             };

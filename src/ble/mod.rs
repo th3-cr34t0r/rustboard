@@ -71,7 +71,7 @@ const L2CAP_MTU: usize = 251;
 
 #[cfg(feature = "central")]
 /// Default memory allocation for softdevice controller in bytes.
-const SDC_MEMORY_SIZE: usize = 2900; // bytes
+const SDC_MEMORY_SIZE: usize = 4896; // bytes
 #[cfg(feature = "peripheral")]
 /// Default memory allocation for softdevice controller in bytes.
 const SDC_MEMORY_SIZE: usize = 5152; // bytes

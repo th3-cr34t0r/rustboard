@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 default = []
-central = ["trouble-host/central", "nrf-sdc/central"]
+central = ["trouble-host/central", "trouble-host/security", "nrf-sdc/central", "nrf-sdc/peripheral"]
 peripheral = ["trouble-host/peripheral", "trouble-host/security","nrf-sdc/peripheral"]
 defmt = [
     "dep:defmt",
@@ -29,7 +29,7 @@ embassy-futures = "0.1.1"
 
 nrf-mpsl = { version = "0.3.0", default-features = false,features = ["critical-section-impl"] }
 nrf-sdc = { version = "0.4.0", default-features = false,features = ["nrf52840"] }
-trouble-host = { version = "0.8.0", default-features = false, features = ["derive","gatt", "serde", "default-packet-pool-size-32"] }
+trouble-host = { version = "0.8.0", default-features = false, features = ["derive","gatt", "serde", "default-packet-pool"] }
 
 embedded-storage-async = { version = "0.4.1"}
 sequential-storage = { version = "7.1.0", features = ["postcard"] }
@@ -54,7 +54,7 @@ bt-hci = {version = "0.10.1", default-features = false, features = ["serde"]}
 
 [profile.release]
 opt-level = "z"       # Size optimization
-debug = 0             # Strip debug symbols
+debug = 2             # Strip debug symbols
 lto = true            # Link-time optimization
 codegen-units = 1     # Allows aggressive cross-crate inlining
 panic = "abort"       # Smaller binary, no unwind overhead

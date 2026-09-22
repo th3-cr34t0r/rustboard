@@ -320,8 +320,14 @@ async fn gatt_split_events_handler<'stack, 'server>(
                     GattEvent::Read(_event) => {}
                     GattEvent::Write(event) => {
                         if event.handle() == split_service_registered_keys.handle {
-                            // central message to peripheral
-                             event.with_data(|_offset, data| {
+                            event.with_data(|_offset, data| {
+
+
+                            #[cfg(feature = "defmt")]
+                            warn!(
+                                "[split_registered_keys] received offset: {}, data: {:?}",_offset,
+                                data
+                            );
                                 // store the central keys in matrix keys
                                 for (index, combined_key) in data.iter().enumerate() {
                                     if *combined_key != 255u8 {
@@ -340,11 +346,11 @@ async fn gatt_split_events_handler<'stack, 'server>(
                                 .publish(matrix_keys_split_local)
                                 .await;
 
-                            #[cfg(feature = "defmt")]
-                            info!(
-                                "[split_registered_keys] received: {:?}",
-                                matrix_keys_split_local
-                            );
+                            // #[cfg(feature = "defmt")]
+                            // info!(
+                            //     "[split_registered_keys] received: {:?}",
+                            //     matrix_keys_split_local
+                            // );
                         }
 
                         // split battery level information
@@ -573,7 +579,7 @@ async fn battery_service_task<'stack, 'server>(
         let battery_percentage = battery_percantage_receiver.changed().await;
 
         match battery_characteristic
-            .notify(conn, &battery_percentage, false)
+            .notify(conn, &battery_percentage, true)
             .await
         {
             Ok(_) => {
@@ -607,7 +613,7 @@ async fn hid_kb_service_task<'stack, 'server>(
         if let WaitResult::Message(key_report) = key_report.next_message().await {
             let _n = serialize(&mut buff, &key_report).unwrap();
 
-            match server.hid_service.report.notify(conn, &buff, false).await {
+            match server.hid_service.report.notify(conn, &buff,true).await {
                 Ok(_) => {
                     #[cfg(feature = "defmt")]
                     info!("[notify] input keyboard notified successfully")
