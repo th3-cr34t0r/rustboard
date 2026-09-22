@@ -2,13 +2,11 @@ use crate::config::{COLS, ENTER_SLEEP_DEBOUNCE, KEY_DEBOUNCE, MATRIX_KEYS_BUFFER
 use crate::keycodes::KC;
 use crate::{MATRIX_KEYS_LOCAL, delay_ms, delay_us};
 
-use core::pin::pin;
 #[cfg(feature = "defmt")]
 use defmt::{Format, info};
-use embassy_futures::select::{Either, select, select_slice};
+use embassy_futures::select::{Either, select, select_array};
 use embassy_nrf::gpio::{Input, Output};
 use embassy_time::Instant;
-use heapless::Vec;
 
 #[cfg_attr(feature = "defmt", derive(Format))]
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -111,23 +109,15 @@ impl<'a> Matrix<'a> {
                 delay_us(10).await;
             }
 
-            // set cols wait for high
-            let mut futures: Vec<_, COLS> = self
-                .cols
-                .iter_mut()
-                .map(|col| col.wait_for_high())
-                .collect();
+            let futs = self.cols.each_mut().map(|col| col.wait_for_high());
 
-            match select(
-                select_slice(pin!(futures.as_mut_slice())),
-                delay_ms(ENTER_SLEEP_DEBOUNCE),
-            )
-            .await
-            {
+            match select(select_array(futs), delay_ms(ENTER_SLEEP_DEBOUNCE)).await {
                 Either::First(_) => {
                     // key has been pressed, but first set all rows to low
                     for row in self.rows.iter_mut() {
                         row.set_low();
+                        // delay so port propagates
+                        delay_us(10).await;
                     }
                 }
                 Either::Second(()) => {
